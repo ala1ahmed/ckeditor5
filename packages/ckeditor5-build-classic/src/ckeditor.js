@@ -34,20 +34,58 @@ import TableProperties from '@ckeditor/ckeditor5-table/src/tableproperties';
 import TableToolbar from '@ckeditor/ckeditor5-table/src/tabletoolbar.js';
 import TextTransformation from '@ckeditor/ckeditor5-typing/src/texttransformation.js';
 import Underline from '@ckeditor/ckeditor5-basic-styles/src/underline.js';
+import Autoformat from '@ckeditor/ckeditor5-autoformat/src/autoformat.js';
+import AutoLink from '@ckeditor/ckeditor5-link/src/autolink.js';
+import Code from '@ckeditor/ckeditor5-basic-styles/src/code.js';
+import DataSchema from '@ckeditor/ckeditor5-html-support/src/dataschema.js';
+import FontBackgroundColor from '@ckeditor/ckeditor5-font/src/fontbackgroundcolor.js';
+import FontColor from '@ckeditor/ckeditor5-font/src/fontcolor.js';
+import GeneralHtmlSupport from '@ckeditor/ckeditor5-html-support/src/generalhtmlsupport.js';
+import Heading from '@ckeditor/ckeditor5-heading/src/heading.js';
+import Highlight from '@ckeditor/ckeditor5-highlight/src/highlight.js';
+import HtmlComment from '@ckeditor/ckeditor5-html-support/src/htmlcomment.js';
+import HtmlEmbed from '@ckeditor/ckeditor5-html-embed/src/htmlembed.js';
+import ImageCaption from '@ckeditor/ckeditor5-image/src/imagecaption.js';
+import Link from '@ckeditor/ckeditor5-link/src/link.js';
+import Markdown from '@ckeditor/ckeditor5-markdown-gfm/src/markdown.js';
+import MediaEmbed from '@ckeditor/ckeditor5-media-embed/src/mediaembed.js';
+import MediaEmbedToolbar from '@ckeditor/ckeditor5-media-embed/src/mediaembedtoolbar.js';
+import Mention from '@ckeditor/ckeditor5-mention/src/mention.js';
+import PageBreak from '@ckeditor/ckeditor5-page-break/src/pagebreak.js';
+import RemoveFormat from '@ckeditor/ckeditor5-remove-format/src/removeformat.js';
+import RestrictedEditingMode from '@ckeditor/ckeditor5-restricted-editing/src/restrictededitingmode.js';
+import SourceEditing from '@ckeditor/ckeditor5-source-editing/src/sourceediting.js';
+import Style from '@ckeditor/ckeditor5-style/src/style.js';
+import Subscript from '@ckeditor/ckeditor5-basic-styles/src/subscript.js';
+import TableCaption from '@ckeditor/ckeditor5-table/src/tablecaption.js';
+import TextPartLanguage from '@ckeditor/ckeditor5-language/src/textpartlanguage.js';
+import WordCount from '@ckeditor/ckeditor5-word-count/src/wordcount.js';
 
 export default class ClassicEditor extends ClassicEditorBase {}
 
 // Plugins to include in the build.
 ClassicEditor.builtinPlugins = [
 	Alignment,
+	Autoformat,
 	AutoImage,
+	AutoLink,
 	Bold,
+	Code,
 	DataFilter,
+	DataSchema,
 	Essentials,
+	FontBackgroundColor,
+	FontColor,
 	FontFamily,
 	FontSize,
+	GeneralHtmlSupport,
+	Heading,
+	Highlight,
 	HorizontalLine,
+	HtmlComment,
+	HtmlEmbed,
 	Image,
+	ImageCaption,
 	ImageInsert,
 	ImageResize,
 	ImageStyle,
@@ -56,18 +94,31 @@ ClassicEditor.builtinPlugins = [
 	Indent,
 	IndentBlock,
 	Italic,
+	Link,
 	List,
-	ListProperties,
+	Markdown,
+	MediaEmbed,
+	MediaEmbedToolbar,
+	Mention,
+	PageBreak,
 	Paragraph,
 	PasteFromOffice,
+	RemoveFormat,
+	RestrictedEditingMode,
 	SimpleUploadAdapter,
+	SourceEditing,
+	Style,
+	Subscript,
 	Table,
+	TableCaption,
 	TableCellProperties,
 	TableColumnResize,
 	TableProperties,
 	TableToolbar,
+	TextPartLanguage,
 	TextTransformation,
 	Underline,
+	WordCount,
 ];
 
 // Editor configuration.
