@@ -5,6 +5,7 @@
 
 // The editor creator to use.
 import ClassicEditorBase from '@ckeditor/ckeditor5-editor-classic/src/classiceditor';
+import DecoupledDocumentEditorBase from '@ckeditor/ckeditor5-editor-decoupled/src/decouplededitor.js';
 
 import Alignment from '@ckeditor/ckeditor5-alignment/src/alignment.js';
 import Autoformat from '@ckeditor/ckeditor5-autoformat/src/autoformat.js';
@@ -23,6 +24,7 @@ import FontSize from '@ckeditor/ckeditor5-font/src/fontsize.js';
 import Heading from '@ckeditor/ckeditor5-heading/src/heading.js';
 import Highlight from '@ckeditor/ckeditor5-highlight/src/highlight.js';
 import HorizontalLine from '@ckeditor/ckeditor5-horizontal-line/src/horizontalline.js';
+import HtmlEmbed from '@ckeditor/ckeditor5-html-embed/src/htmlembed.js';
 import Image from '@ckeditor/ckeditor5-image/src/image.js';
 import ImageCaption from '@ckeditor/ckeditor5-image/src/imagecaption.js';
 import ImageInsert from '@ckeditor/ckeditor5-image/src/imageinsert.js';
@@ -65,10 +67,10 @@ import WordCount from '@ckeditor/ckeditor5-word-count/src/wordcount.js';
 import TableCaption from '@ckeditor/ckeditor5-table/src/tablecaption.js';
 import TableCellProperties from '@ckeditor/ckeditor5-table/src/tablecellproperties';
 
-export default class ClassicEditor extends ClassicEditorBase {}
+class ClassicEditor extends ClassicEditorBase {}
+class DecoupledDocumentEditor extends DecoupledDocumentEditorBase {}
 
-// Plugins to include in the build.
-ClassicEditor.builtinPlugins = [
+const plugins = [
 	Alignment,
 	Autoformat,
 	AutoImage,
@@ -86,6 +88,7 @@ ClassicEditor.builtinPlugins = [
 	Heading,
 	Highlight,
 	HorizontalLine,
+	HtmlEmbed,
 	Image,
 	ImageCaption,
 	ImageInsert,
@@ -128,9 +131,7 @@ ClassicEditor.builtinPlugins = [
 	TableCaption,
 	TableCellProperties,
 ];
-
-// Editor configuration.
-ClassicEditor.defaultConfig = {
+const defaultConfig = {
 	fontSize: {
 		options: [9, 11, 13, 'default', 17, 19, 21],
 	},
@@ -177,4 +178,16 @@ ClassicEditor.defaultConfig = {
 	},
 	// This value must be kept in sync with the language defined in webpack.config.js.
 	language: 'fr',
+};
+// Plugins to include in the build.
+ClassicEditor.builtinPlugins = plugins;
+DecoupledDocumentEditor.builtinPlugins = plugins;
+
+// Editor configuration.
+ClassicEditor.defaultConfig = defaultConfig;
+DecoupledDocumentEditor.defaultConfig = defaultConfig;
+
+export default {
+	ClassicEditor,
+	DecoupledDocumentEditor,
 };
