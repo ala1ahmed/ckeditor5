@@ -39,8 +39,6 @@ import Link from '@ckeditor/ckeditor5-link/src/link.js';
 import LinkImage from '@ckeditor/ckeditor5-link/src/linkimage.js';
 import List from '@ckeditor/ckeditor5-list/src/list.js';
 import ListProperties from '@ckeditor/ckeditor5-list/src/listproperties.js';
-import MediaEmbed from '@ckeditor/ckeditor5-media-embed/src/mediaembed.js';
-import MediaEmbedToolbar from '@ckeditor/ckeditor5-media-embed/src/mediaembedtoolbar.js';
 import PageBreak from '@ckeditor/ckeditor5-page-break/src/pagebreak.js';
 import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph.js';
 import PasteFromOffice from '@ckeditor/ckeditor5-paste-from-office/src/pastefromoffice.js';
@@ -66,6 +64,8 @@ import Underline from '@ckeditor/ckeditor5-basic-styles/src/underline.js';
 import WordCount from '@ckeditor/ckeditor5-word-count/src/wordcount.js';
 import TableCaption from '@ckeditor/ckeditor5-table/src/tablecaption.js';
 import TableCellProperties from '@ckeditor/ckeditor5-table/src/tablecellproperties';
+import WordImport from './plugin/importWord';
+import { DragDrop } from '@ckeditor/ckeditor5-clipboard';
 
 class ClassicEditor extends ClassicEditorBase {}
 class DecoupledDocumentEditor extends DecoupledDocumentEditorBase {}
@@ -103,8 +103,6 @@ const plugins = [
 	LinkImage,
 	List,
 	ListProperties,
-	MediaEmbed,
-	MediaEmbedToolbar,
 	PageBreak,
 	Paragraph,
 	PasteFromOffice,
@@ -128,8 +126,10 @@ const plugins = [
 	TodoList,
 	Underline,
 	WordCount,
+	WordImport,
 	TableCaption,
 	TableCellProperties,
+	DragDrop
 ];
 const defaultConfig = {
 	fontSize: {
@@ -156,6 +156,7 @@ const defaultConfig = {
 			'|',
 			'imageUpload',
 			'insertTable',
+			'wordImport',
 		],
 	},
 	image: {
@@ -166,6 +167,9 @@ const defaultConfig = {
 			'imageStyle:block',
 			'imageStyle:side',
 		],
+	},
+	wordImport: {
+		url: `http://localhost:5000/embeded-documents/convert-html`,
 	},
 	table: {
 		contentToolbar: [
