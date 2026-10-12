@@ -10,5 +10,14 @@
 module.exports = {
 	rules: {
 		'ckeditor5-rules/ckeditor-imports': 'off'
-	}
+	},
+	overrides: [
+		{
+			// Wiiform's own plugins are not CKSource code.
+			files: [ 'src/plugin/importWord.js', 'src/plugin/htmlToPdf.js', 'src/plugin/theme.js' ],
+			rules: {
+				'ckeditor5-rules/license-header': 'off'
+			}
+		}
+	]
 };

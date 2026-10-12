@@ -1,79 +1,52 @@
-<!DOCTYPE html><!--
-	Copyright (c) 2014-2023, CKSource Holding sp. z o.o. All rights reserved.
-	This file is licensed under the terms of the MIT License (see LICENSE.md).
+<!DOCTYPE html>
+<!--
+	Manual check page for the built bundle. Build first (npm run build), then
+	open this file in a browser. The PDF button needs a running backend that
+	accepts the request (see README → htmlToPdf); without one it logs an error.
 -->
-
-<html lang="en" dir="ltr">
+<html lang="fr">
 	<head>
-		<title>CKEditor 5 DecoupledDocumentEditor build</title>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="icon" type="image/png" href="https://c.cksource.com/a/1/logos/ckeditor5.png">
-		<link rel="stylesheet" type="text/css" href="styles.css">
+		<meta charset="utf-8">
+		<title>ckeditor5-build-classic — sample</title>
+		<style>
+			:root { --app-surface: #ffffff; --app-brand: #4b2da8; }
+			body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 900px; padding: 0 16px; }
+			h2 { font-size: 1rem; margin: 2rem 0 .5rem; }
+		</style>
 	</head>
-	<body data-editor="DecoupledDocumentEditor" data-collaboration="false" data-revision-history="false">
-		<header>
-			<div class="centered">
-				<h1><a href="https://ckeditor.com/ckeditor-5/" target="_blank" rel="noopener noreferrer"><img src="https://c.cksource.com/a/1/logos/ckeditor5.svg" alt="CKEditor 5 logo">CKEditor 5</a></h1>
-				<nav>
-					<ul>
-						<li><a href="https://ckeditor.com/docs/ckeditor5/" target="_blank" rel="noopener noreferrer">Documentation</a></li>
-						<li><a href="https://ckeditor.com/" target="_blank" rel="noopener noreferrer">Website</a></li>
-					</ul>
-				</nav>
-			</div>
-		</header>
-		<main>
-			<div class="message">
-				<div class="centered">
-					<h2>CKEditor 5 online builder demo - DecoupledDocumentEditor build</h2>
-				</div>
-			</div>
-			<div class="centered">
-				<div class="row">
-					<div class="document-editor__toolbar"></div>
-				</div>
-				<div class="row row-editor">
-					<div class="editor-container">
-						<div class="editor">
-						</div>
-					</div>
-				</div></div>
-			</div>
-		</main>
-		<footer>
-			<p><a href="https://ckeditor.com/ckeditor-5/" target="_blank" rel="noopener">CKEditor 5</a>
-				– Rich text editor of tomorrow, available today
-			</p>
-			<p>Copyright © 2003-2023,
-				<a href="https://cksource.com/" target="_blank" rel="noopener">CKSource</a>
-				Holding sp. z o.o. All rights reserved.
-			</p>
-		</footer>
-		<script src="https://cdn.ckbox.io/CKBox/1.4.0/ckbox.js"></script>
+	<body>
+		<h2>Stock look (no theme)</h2>
+		<div id="stock"><p>Éditeur sans thème.</p></div>
+
+		<h2>Dark preset, brand colour from a CSS token, PDF export</h2>
+		<div id="dark"><h2>Document</h2><p>Sélectionnez du texte et ajoutez un lien pour voir la bulle thémée.</p></div>
+
+		<h2>Light preset with overrides</h2>
+		<div id="light"><p>Client : <span class="h-card p-label" data-key="k1" data-entity="client">Acme</span></p></div>
+
 		<script src="../build/ckeditor.js"></script>
-		<script>CKEDITOR.ClassicEditor
-				.create( document.querySelector( '.editor' ), {
-					
-					licenseKey: '',
-					
-					
-					
-					
-				} )
-				.then( editor => {
-					window.editor = editor;
-					console.log(editor)
-					// Set a custom container for the toolbar.
-					document.querySelector( '.document-editor__toolbar' ).appendChild( editor.ui.view.toolbar.element );
-					document.querySelector( '.ck-toolbar' ).classList.add( 'ck-reset_all' );
-				} )
-				.catch( error => {
-					console.error( 'Oops, something went wrong!' );
-					console.error( 'Please, report the following error on https://github.com/ckeditor/ckeditor5/issues with the build id and the error stack trace:' );
-					console.warn( 'Build id: 5bqu2smonw6f-u9490jx48w7r' );
-					console.error( error );
-				} );
+		<script>
+			const { ClassicEditor } = window.CKEDITOR;
+
+			ClassicEditor.create( document.querySelector( '#stock' ) );
+
+			ClassicEditor.create( document.querySelector( '#dark' ), {
+				toolbar: [ 'undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'link', '|', 'insertTable', '|', 'htmlToPdf' ],
+				theme: { preset: 'dark', colors: { primary: 'var(--app-brand)' }, radius: '8px' },
+				htmlToPdf: {
+					url: 'http://localhost:5000/doc/html-to-pdf',
+					data: () => ( { title: 'Exemple' } ),
+					fileName: () => 'exemple.pdf'
+				}
+			} );
+
+			ClassicEditor.create( document.querySelector( '#light' ), {
+				theme: {
+					colors: { primary: '#4b2da8', primaryHover: '#6b47d6', primarySoft: '#f0edfb', border: '#e5dff9' },
+					radius: '10px',
+					fontFamily: 'Georgia, serif'
+				}
+			} );
 		</script>
 	</body>
 </html>

@@ -1,71 +1,101 @@
-CKEditor 5 classic editor build
-========================================
+# @alapandaahmed/ckeditor5-build-classic
 
-[![npm version](https://badge.fury.io/js/%40ckeditor%2Fckeditor5-build-classic.svg)](https://www.npmjs.com/package/@ckeditor/ckeditor5-build-classic)
-[![Coverage Status](https://coveralls.io/repos/github/ckeditor/ckeditor5/badge.svg?branch=master)](https://coveralls.io/github/ckeditor/ckeditor5?branch=master)
-[![Build Status](https://travis-ci.com/ckeditor/ckeditor5.svg?branch=master)](https://app.travis-ci.com/github/ckeditor/ckeditor5)
-![Dependency Status](https://img.shields.io/librariesio/release/npm/@ckeditor/ckeditor5-build-classic)
+A CKEditor 5 **v37.1.0** classic build, built from the official `@ckeditor/ckeditor5-*@37.1.0` packages on npm, with a few custom plugins:
 
-The classic editor build for CKEditor 5. Read more about the [classic editor build](https://ckeditor.com/docs/ckeditor5/latest/installation/getting-started/predefined-builds.html#classic-editor) and see the [demo](https://ckeditor.com/docs/ckeditor5/latest/examples/builds/classic-editor.html).
+| Plugin | Toolbar item | Purpose |
+|---|---|---|
+| `WordImport` | `wordImport` (in the default toolbar) | Uploads a .doc/.docx and replaces the content with the converted HTML |
+| `HtmlToPdf` | `htmlToPdf` (opt-in) | Sends the editor HTML to a backend and returns a PDF `File` |
+| `Theme` | — | Per-instance theming through the `theme` config |
+| `HCardEditing` | — | Inline `<span class="h-card">` widgets with drag and drop (ClassicEditor only) |
+| `GeneralHtmlSupport` | — | Inert until you pass `htmlSupport.allow` |
 
-![CKEditor 5 classic editor build screenshot](https://c.cksource.com/a/1/img/npm/ckeditor5-build-classic.png)
+v37.1.0 is deliberately the last CKEditor release before the "Powered by CKEditor" logo (v38+) and the mandatory `licenseKey` (v44+). Moving past it needs a commercial license to keep the logo out.
 
-## Documentation
-
-See:
-
-* [Installation](https://ckeditor.com/docs/ckeditor5/latest/installation/getting-started/quick-start.html) for how to install this package and what it contains.
-* [Editor lifecycle](https://ckeditor.com/docs/ckeditor5/latest/installation/getting-started/editor-lifecycle.html) for how to create an editor and interact with it.
-* [Configuration](https://ckeditor.com/docs/ckeditor5/latest/installation/getting-started/configuration.html) for how to configure the editor.
-* [Creating custom builds](https://ckeditor.com/docs/ckeditor5/latest/installation/getting-started/quick-start.html#building-the-editor-from-source) for how to customize the build (configure and rebuild the editor bundle).
-
-## Quick start
-
-First, install the build from npm:
+## Install
 
 ```bash
-npm install --save @ckeditor/ckeditor5-build-classic
+npm install @alapandaahmed/ckeditor5-build-classic
 ```
 
-And use it in your website:
-
-```html
-<div id="editor">
-	<p>This is the editor content.</p>
-</div>
-<script src="./node_modules/@ckeditor/ckeditor5-build-classic/build/ckeditor.js"></script>
-<script>
-	ClassicEditor
-		.create( document.querySelector( '#editor' ) )
-		.then( editor => {
-			window.editor = editor;
-		} )
-		.catch( error => {
-			console.error( 'There was a problem initializing the editor.', error );
-		} );
-</script>
-```
-
-Or in your JavaScript application:
+The bundle is UMD and injects its own CSS:
 
 ```js
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+const { ClassicEditor, DecoupledDocumentEditor } = require( '@alapandaahmed/ckeditor5-build-classic' );
 
-// Or using the CommonJS version:
-// const ClassicEditor = require( '@ckeditor/ckeditor5-build-classic' );
-
-ClassicEditor
-	.create( document.querySelector( '#editor' ) )
-	.then( editor => {
-		window.editor = editor;
-	} )
-	.catch( error => {
-		console.error( 'There was a problem initializing the editor.', error );
-	} );
+ClassicEditor.create( element, config );
 ```
 
-**Note:** If you are planning to integrate CKEditor 5 deep into your application, it is actually more convenient and recommended to install and import the source modules directly (like it happens in `ckeditor.js`). Read more in the [Advanced setup guide](https://ckeditor.com/docs/ckeditor5/latest/installation/advanced/alternative-setups/integrating-from-source.html).
+In a page, the same object is `window.CKEDITOR`. The UI language is French.
+
+## Configuration
+
+### `wordImport`
+
+```js
+wordImport: { url: 'https://api.example.com/doc/convert-html' }
+```
+
+The file is posted as `multipart/form-data` (field `file`); the response body (HTML) replaces the editor content. On a non-2xx response the content is left untouched.
+
+### `htmlToPdf`
+
+```js
+toolbar: [ /* … */ 'htmlToPdf' ],
+htmlToPdf: {
+	url: 'https://api.example.com/doc/html-to-pdf',
+	headers: async () => ( { Authorization: `Bearer ${ await getToken() }` } ),
+	data: () => ( { title: 'Mon document' } ),  // merged into the JSON body
+	fileName: () => 'Mon document.pdf',
+	onSuccess: file => { /* a File of type application/pdf */ },
+	onError: error => { /* error.status is set for HTTP failures */ }
+}
+```
+
+The request is `POST` JSON `{ ...data, html }`. `headers`, `data` and `fileName` may be values or (async) functions, resolved on every export. Without `onSuccess` the PDF is downloaded. The export is also available as a command: `editor.execute( 'htmlToPdf' )`.
+
+### `theme`
+
+```js
+theme: {
+	preset: 'light',             // 'light' (stock look, default) or 'dark'
+	colors: {
+		primary, primaryHover, primarySoft,
+		background, surface, surfaceHover,
+		text, textMuted, border
+	},
+	radius: '8px',
+	fontFamily: 'inherit'
+}
+```
+
+Every value is optional and may be a `var(--token)` reference, so an app that switches light/dark by redefining its CSS tokens re-themes the editor live. The theme only applies to that editor instance, including its balloons and panels.
+
+### Busy state and events
+
+`WordImport` and `HtmlToPdf` are observable: `editor.plugins.get( 'HtmlToPdf' ).isBusy` is true during a conversion, and they fire `wordImport:start|end|error` and `htmlToPdf:start|end|error`.
+
+## Develop
+
+This package is installed on its own, not through the monorepo workspaces:
+
+```bash
+npm install --workspaces=false
+npm run build      # build/ckeditor.js + translations
+npm test           # headless smoke tests against the built bundle
+```
+
+`sample/index.html` loads the built bundle for manual checks.
+
+## Publish
+
+```bash
+npm version <new-version>   # rebuilds through the preversion script
+npm publish                 # prepublishOnly rebuilds and runs the smoke tests
+```
+
+Keep every `@ckeditor/*` dependency on the same exact version, or the editor throws `ckeditor-duplicated-modules`.
 
 ## License
 
-Licensed under the terms of [GNU General Public License Version 2 or later](http://www.gnu.org/licenses/gpl.html). For full details about the license, please check the `LICENSE.md` file or [https://ckeditor.com/legal/ckeditor-oss-license](https://ckeditor.com/legal/ckeditor-oss-license).
+GPL-2.0-or-later, as CKEditor 5 itself. See LICENSE.md.
