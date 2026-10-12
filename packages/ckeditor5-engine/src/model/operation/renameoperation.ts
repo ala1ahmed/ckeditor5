@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,13 +7,14 @@
  * @module engine/model/operation/renameoperation
  */
 
-import Operation from './operation';
-import Element from '../element';
-import Position from '../position';
+import Operation from './operation.js';
+import Element from '../element.js';
+import Position from '../position.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
 
-import type Document from '../document';
+import type Document from '../document.js';
+import type { Selectable } from '../selection.js';
 
 /**
  * Operation to change element's name.
@@ -61,6 +62,13 @@ export default class RenameOperation extends Operation {
 	 */
 	public get type(): 'rename' {
 		return 'rename';
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		return this.position.nodeAfter;
 	}
 
 	/**
@@ -147,8 +155,8 @@ export default class RenameOperation extends Operation {
 		return new RenameOperation( Position.fromJSON( json.position, document ), json.oldName, json.newName, json.baseVersion );
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `RenameOperation( ${ this.baseVersion } ): ` +
-	// @if CK_DEBUG_ENGINE //		`${ this.position }: "${ this.oldName }" -> "${ this.newName }"`;
+	// @if CK_DEBUG_ENGINE // 		`${ this.position }: "${ this.oldName }" -> "${ this.newName }"`;
 	// @if CK_DEBUG_ENGINE // }
 }

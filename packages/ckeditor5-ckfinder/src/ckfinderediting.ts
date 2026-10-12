@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,11 @@
  * @module ckfinder/ckfinderediting
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
-import { Notification } from 'ckeditor5/src/ui';
-import { CKEditorError } from 'ckeditor5/src/utils';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { Notification } from 'ckeditor5/src/ui.js';
+import { CKEditorError } from 'ckeditor5/src/utils.js';
 
-import CKFinderCommand from './ckfindercommand';
+import CKFinderCommand from './ckfindercommand.js';
 
 /**
  * The CKFinder editing feature. It introduces the {@link module:ckfinder/ckfindercommand~CKFinderCommand CKFinder command}.
@@ -20,15 +20,22 @@ export default class CKFinderEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'CKFinderEditing' {
-		return 'CKFinderEditing';
+	public static get pluginName() {
+		return 'CKFinderEditing' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ Notification, 'LinkEditing' ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ Notification, 'LinkEditing' ] as const;
 	}
 
 	/**
@@ -54,15 +61,5 @@ export default class CKFinderEditing extends Plugin {
 		}
 
 		editor.commands.add( 'ckfinder', new CKFinderCommand( editor ) );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ CKFinderEditing.pluginName ]: CKFinderEditing;
-	}
-
-	interface CommandsMap {
-		ckfinder: CKFinderCommand;
 	}
 }

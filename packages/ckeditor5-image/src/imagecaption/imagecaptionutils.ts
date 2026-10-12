@@ -1,16 +1,16 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /**
- * @module image/imagecaptionutils/utils
+ * @module image/imagecaption/imagecaptionutils
  */
 
-import type { DocumentSelection, Element, Selection, ViewElement, Match } from 'ckeditor5/src/engine';
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
+import type { DocumentSelection, Element, Selection, ViewElement, Match } from 'ckeditor5/src/engine.js';
+import { Plugin } from 'ckeditor5/src/core.js';
 
-import ImageUtils from '../imageutils';
+import ImageUtils from '../imageutils.js';
 
 /**
  * The image caption utilities plugin.
@@ -19,15 +19,22 @@ export default class ImageCaptionUtils extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageCaptionUtils' {
-		return 'ImageCaptionUtils';
+	public static get pluginName() {
+		return 'ImageCaptionUtils' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageUtils ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ ImageUtils ] as const;
 	}
 
 	/**
@@ -47,7 +54,7 @@ export default class ImageCaptionUtils extends Plugin {
 	 * Returns the caption model element for a model selection. Returns `null` if the selection has no caption element ancestor.
 	 */
 	public getCaptionFromModelSelection( selection: Selection | DocumentSelection ): Element | null {
-		const imageUtils = this.editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = this.editor.plugins.get( 'ImageUtils' );
 		const captionElement = selection.getFirstPosition()!.findAncestor( 'caption' );
 
 		if ( !captionElement ) {
@@ -68,7 +75,7 @@ export default class ImageCaptionUtils extends Plugin {
 	 * cannot be matched.
 	 */
 	public matchImageCaptionViewElement( element: ViewElement ): Match | null {
-		const imageUtils = this.editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = this.editor.plugins.get( 'ImageUtils' );
 
 		// Convert only captions for images.
 		if ( element.name == 'figcaption' && imageUtils.isBlockImageView( element.parent as ViewElement ) ) {
@@ -76,11 +83,5 @@ export default class ImageCaptionUtils extends Plugin {
 		}
 
 		return null;
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ ImageCaptionUtils.pluginName ]: ImageCaptionUtils;
 	}
 }

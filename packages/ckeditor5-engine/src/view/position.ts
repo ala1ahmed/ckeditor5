@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,20 +7,17 @@
  * @module engine/view/position
  */
 
-import TypeCheckable from './typecheckable';
+import TypeCheckable from './typecheckable.js';
 
 import { CKEditorError, compareArrays } from '@ckeditor/ckeditor5-utils';
 
-import EditableElement from './editableelement';
+import EditableElement from './editableelement.js';
 
-// To check if component is loaded more than once.
-import '@ckeditor/ckeditor5-utils/src/version';
-
-import type DocumentFragment from './documentfragment';
-import type Element from './element';
-import type Item from './item';
-import type Node from './node';
-import { default as TreeWalker, type TreeWalkerValue, type TreeWalkerOptions } from './treewalker';
+import type DocumentFragment from './documentfragment.js';
+import type Element from './element.js';
+import type Item from './item.js';
+import type Node from './node.js';
+import { default as TreeWalker, type TreeWalkerValue, type TreeWalkerOptions } from './treewalker.js';
 
 /**
  * Position in the view tree. Position is represented by its parent node and an offset in this parent.
@@ -147,7 +144,7 @@ export default class Position extends TypeCheckable {
 	 * getLastMatchingPosition( value => false ); // Do not move the position.
 	 * ```
 	 *
-	 * @param skip Callback function. Gets {@link module:engine/view/treewalker~type TreeWalkerValue} and should
+	 * @param skip Callback function. Gets {@link module:engine/view/treewalker~TreeWalkerValue} and should
 	 * return `true` if the value should be skipped or `false` if not.
 	 * @param options Object with configuration options. See {@link module:engine/view/treewalker~TreeWalker}.
 	 * @returns The position after the last item which matches the `skip` callback test.
@@ -262,13 +259,9 @@ export default class Position extends TypeCheckable {
 			case 'extension':
 				return 'after';
 
-			/* istanbul ignore next */
-			case 'same':
-				// Already covered by `this.isEqual` above. Added so TypeScript can infer `result` as number in `default` case.
-				return 'same';
-
 			default:
-				return thisPath[ result ] < otherPath[ result ] ? 'before' : 'after';
+				// Cast to number to avoid having 'same' as a type of `result`.
+				return thisPath[ result as number ] < otherPath[ result as number ] ? 'before' : 'after';
 		}
 	}
 

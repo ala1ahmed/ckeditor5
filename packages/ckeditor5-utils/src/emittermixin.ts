@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,20 +7,21 @@
  * @module utils/emittermixin
  */
 
-import EventInfo from './eventinfo';
-import uid from './uid';
-import priorities, { type PriorityString } from './priorities';
-import insertToPriorityArray from './inserttopriorityarray';
+import EventInfo from './eventinfo.js';
+import uid from './uid.js';
+import priorities, { type PriorityString } from './priorities.js';
+import insertToPriorityArray from './inserttopriorityarray.js';
+import type { Constructor, Mixed } from './mix.js';
 
 // To check if component is loaded more than once.
-import './version';
-import CKEditorError from './ckeditorerror';
+import './version.js';
+import CKEditorError from './ckeditorerror.js';
 
 const _listeningTo = Symbol( 'listeningTo' );
 const _emitterId = Symbol( 'emitterId' );
 const _delegations = Symbol( 'delegations' );
 
-const defaultEmitterClass = EmitterMixin( Object );
+const defaultEmitterClass = /* #__PURE__ */ EmitterMixin( Object );
 
 /**
  * Mixin that injects the {@link ~Emitter events API} into its host.
@@ -36,18 +37,13 @@ const defaultEmitterClass = EmitterMixin( Object );
  * ```
  *
  * Read more about the concept of emitters in the:
- * * {@glink framework/guides/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
- * section of the {@glink framework/guides/architecture/core-editor-architecture Core editor architecture} guide.
- * * {@glink framework/guides/deep-dive/event-system Event system} deep-dive guide.
+ * * {@glink framework/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
+ * section of the {@glink framework/architecture/core-editor-architecture Core editor architecture} guide.
+ * * {@glink framework/deep-dive/event-system Event system} deep-dive guide.
  *
  * @label EXTENDS
  */
-export default function EmitterMixin<Base extends abstract new ( ...args: Array<any> ) => object>(
-	base: Base
-): {
-	new ( ...args: ConstructorParameters<Base> ): InstanceType<Base> & Emitter;
-	prototype: InstanceType<Base> & Emitter;
-};
+export default function EmitterMixin<Base extends Constructor>( base: Base ): Mixed<Base, Emitter>;
 
 /**
  * Mixin that injects the {@link ~Emitter events API} into its host.
@@ -61,9 +57,9 @@ export default function EmitterMixin<Base extends abstract new ( ...args: Array<
  * ```
  *
  * Read more about the concept of emitters in the:
- * * {@glink framework/guides/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
- * section of the {@glink framework/guides/architecture/core-editor-architecture Core editor architecture} guide.
- * * {@glink framework/guides/deep-dive/event-system Event system} deep dive guide.
+ * * {@glink framework/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
+ * section of the {@glink framework/architecture/core-editor-architecture Core editor architecture} guide.
+ * * {@glink framework/deep-dive/event-system Event system} deep dive guide.
  *
  * @label NO_ARGUMENTS
  */
@@ -72,7 +68,7 @@ export default function EmitterMixin(): {
 	prototype: Emitter;
 };
 
-export default function EmitterMixin( base?: abstract new( ...args: Array<any> ) => object ): unknown {
+export default function EmitterMixin( base?: Constructor ): unknown {
 	if ( !base ) {
 		return defaultEmitterClass;
 	}
@@ -231,25 +227,24 @@ export default function EmitterMixin( base?: abstract new( ...args: Array<any> )
 
 				// Handle event listener callbacks first.
 				if ( callbacks ) {
-					// Arguments passed to each callback.
-					const callbackArgs = [ eventInfo, ...args ];
-
 					// Copying callbacks array is the easiest and most secure way of preventing infinite loops, when event callbacks
 					// are added while processing other callbacks. Previous solution involved adding counters (unique ids) but
 					// failed if callbacks were added to the queue before currently processed callback.
 					// If this proves to be too inefficient, another method is to change `.on()` so callbacks are stored if same
 					// event is currently processed. Then, `.fire()` at the end, would have to add all stored events.
-					callbacks = Array.from( callbacks );
+					callbacks = callbacks.slice();
 
 					for ( let i = 0; i < callbacks.length; i++ ) {
-						callbacks[ i ].callback.apply( this, callbackArgs );
+						const fn = callbacks[ i ].callback;
+
+						fn.call( this, eventInfo, ...args );
 
 						// Remove the callback from future requests if off() has been called.
 						if ( eventInfo.off.called ) {
 							// Remove the called mark for the next calls.
 							delete eventInfo.off.called;
 
-							this._removeEventListener( event, callbacks[ i ].callback );
+							this._removeEventListener( event, fn );
 						}
 
 						// Do not execute next callbacks if stop() was called.
@@ -278,7 +273,7 @@ export default function EmitterMixin( base?: abstract new( ...args: Array<any> )
 				return eventInfo.return;
 			} catch ( err ) {
 				// @if CK_DEBUG // throw err;
-				/* istanbul ignore next */
+				/* istanbul ignore next -- @preserve */
 				CKEditorError.rethrowUnexpectedError( err as Error, this );
 			}
 		}
@@ -359,18 +354,18 @@ export default function EmitterMixin( base?: abstract new( ...args: Array<any> )
 			}
 		}
 
-		public _events?: { [ eventName: string ]: EventNode };
+		public declare _events?: { [ eventName: string ]: EventNode };
 
-		public [ _emitterId ]?: string;
+		public declare [ _emitterId ]?: string;
 
-		public [ _listeningTo ]?: {
+		public declare [ _listeningTo ]?: {
 			[ emitterId: string ]: {
 				emitter: Emitter;
 				callbacks: { [ event: string]: Array<Function> };
 			};
 		};
 
-		public [ _delegations ]?: Map<string, Map<Emitter, string | ( ( name: string ) => string ) | undefined>>;
+		public declare [ _delegations ]?: Map<string, Map<Emitter, string | ( ( name: string ) => string ) | undefined>>;
 	}
 
 	return Mixin;
@@ -388,7 +383,7 @@ export default function EmitterMixin( base?: abstract new( ...args: Array<any> )
 /**
  * Emitter/listener interface.
  *
- * Can be easily implemented by a class by mixing the {@link module:utils/emittermixin~EmitterMixin} mixin.
+ * Can be easily implemented by a class by mixing the {@link module:utils/emittermixin~Emitter} mixin.
  *
  * ```ts
  * class MyClass extends EmitterMixin() {
@@ -397,9 +392,9 @@ export default function EmitterMixin( base?: abstract new( ...args: Array<any> )
  * ```
  *
  * Read more about the usage of this interface in the:
- * * {@glink framework/guides/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
- * section of the {@glink framework/guides/architecture/core-editor-architecture Core editor architecture} guide.
- * * {@glink framework/guides/deep-dive/event-system Event system} deep-dive guide.
+ * * {@glink framework/architecture/core-editor-architecture#event-system-and-observables Event system and observables}
+ * section of the {@glink framework/architecture/core-editor-architecture Core editor architecture} guide.
+ * * {@glink framework/deep-dive/event-system Event system} deep-dive guide.
  */
 export interface Emitter {
 
@@ -840,21 +835,25 @@ function getCallbacksListsForNamespace( source: EmitterInternal, eventName: stri
  * for callbacks for it's more generic version.
  */
 function getCallbacksForEvent( source: EmitterInternal, eventName: string ): EventNode[ 'callbacks' ] | null {
-	let event;
-
-	if ( !source._events || !( event = source._events[ eventName ] ) || !event.callbacks.length ) {
-		// There are no callbacks registered for specified eventName.
-		// But this could be a specific-type event that is in a namespace.
-		if ( eventName.indexOf( ':' ) > -1 ) {
-			// If the eventName is specific, try to find callback lists for more generic event.
-			return getCallbacksForEvent( source, eventName.substr( 0, eventName.lastIndexOf( ':' ) ) );
-		} else {
-			// If this is a top-level generic event, return null;
-			return null;
-		}
+	if ( !source._events ) {
+		return null;
 	}
 
-	return event.callbacks;
+	let currentEventName = eventName;
+
+	do {
+		const event = source._events[ currentEventName ];
+
+		if ( event && event.callbacks && event.callbacks.length ) {
+			return event.callbacks;
+		}
+
+		const colonIndex = currentEventName.lastIndexOf( ':' );
+
+		currentEventName = colonIndex > -1 ? currentEventName.substring( 0, colonIndex ) : '';
+	} while ( currentEventName );
+
+	return null;
 }
 
 /**

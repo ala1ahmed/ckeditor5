@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,9 @@
  * @module image/image/insertimagecommand
  */
 
-import { Command, type Editor } from 'ckeditor5/src/core';
-import { logWarning, toArray, type ArrayOrItem } from 'ckeditor5/src/utils';
+import { Command, type Editor } from 'ckeditor5/src/core.js';
+import { logWarning, toArray, type ArrayOrItem } from 'ckeditor5/src/utils.js';
+import type ImageUtils from '../imageutils.js';
 
 /**
  * Insert image command.
@@ -59,7 +60,7 @@ export default class InsertImageCommand extends Command {
 			if ( configImageInsertType === 'block' ) {
 				/**
 				 * The {@link module:image/imageblock~ImageBlock} plugin must be enabled to allow inserting block images. See
-				 * {@link module:image/imageinsert~ImageInsertConfig#type} to learn more.
+				 * {@link module:image/imageconfig~ImageInsertConfig#type} to learn more.
 				 *
 				 * @error image-block-plugin-required
 				 */
@@ -71,7 +72,7 @@ export default class InsertImageCommand extends Command {
 			if ( configImageInsertType === 'inline' ) {
 				/**
 				 * The {@link module:image/imageinline~ImageInline} plugin must be enabled to allow inserting inline images. See
-				 * {@link module:image/imageinsert~ImageInsertConfig#type} to learn more.
+				 * {@link module:image/imageconfig~ImageInsertConfig#type} to learn more.
 				 *
 				 * @error image-inline-plugin-required
 				 */
@@ -84,7 +85,9 @@ export default class InsertImageCommand extends Command {
 	 * @inheritDoc
 	 */
 	public override refresh(): void {
-		this.isEnabled = this.editor.plugins.get( 'ImageUtils' ).isImageAllowed();
+		const imageUtils: ImageUtils = this.editor.plugins.get( 'ImageUtils' );
+
+		this.isEnabled = imageUtils.isImageAllowed();
 	}
 
 	/**
@@ -92,13 +95,19 @@ export default class InsertImageCommand extends Command {
 	 *
 	 * @fires execute
 	 * @param options Options for the executed command.
+	 * @param options.imageType The type of the image to insert. If not specified, the type will be determined automatically.
 	 * @param options.source The image source or an array of image sources to insert.
 	 * See the documentation of the command to learn more about accepted formats.
 	 */
-	public override execute( options: { source: ArrayOrItem<string | Record<string, unknown>> } ): void {
+	public override execute(
+		options: {
+			source: ArrayOrItem<string | Record<string, unknown>>;
+			imageType?: 'imageBlock' | 'imageInline' | null;
+		}
+	): void {
 		const sourceDefinitions = toArray<string | Record<string, unknown>>( options.source );
 		const selection = this.editor.model.document.selection;
-		const imageUtils = this.editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = this.editor.plugins.get( 'ImageUtils' );
 
 		// In case of multiple images, each image (starting from the 2nd) will be inserted at a position that
 		// follows the previous one. That will move the selection and, to stay on the safe side and make sure
@@ -122,9 +131,9 @@ export default class InsertImageCommand extends Command {
 			if ( index && selectedElement && imageUtils.isImage( selectedElement ) ) {
 				const position = this.editor.model.createPositionAfter( selectedElement );
 
-				imageUtils.insertImage( { ...sourceDefinition, ...selectionAttributes }, position );
+				imageUtils.insertImage( { ...sourceDefinition, ...selectionAttributes }, position, options.imageType );
 			} else {
-				imageUtils.insertImage( { ...sourceDefinition, ...selectionAttributes } );
+				imageUtils.insertImage( { ...sourceDefinition, ...selectionAttributes }, null, options.imageType );
 			}
 		} );
 	}

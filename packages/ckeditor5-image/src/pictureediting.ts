@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,12 @@
  * @module image/pictureediting
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
+import { Plugin } from 'ckeditor5/src/core.js';
 
-import ImageEditing from './image/imageediting';
-import ImageUtils from './imageutils';
-import { downcastSourcesAttribute, upcastPicture } from './image/converters';
-import type { ImageUploadCompleteEvent } from './imageupload/imageuploadediting';
+import ImageEditing from './image/imageediting.js';
+import ImageUtils from './imageutils.js';
+import { downcastSourcesAttribute, upcastPicture } from './image/converters.js';
+import type { default as ImageUploadEditing, ImageUploadCompleteEvent } from './imageupload/imageuploadediting.js';
 
 /**
  * This plugin enables the [`<picture>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/picture) element support in the editor.
@@ -43,7 +43,7 @@ import type { ImageUploadCompleteEvent } from './imageupload/imageuploadediting'
  * </figure>
  * ```
  *
- * **Note:** The value of the `sources` {@glink framework/guides/architecture/editing-engine#changing-the-model model attribute}
+ * **Note:** The value of the `sources` {@glink framework/architecture/editing-engine#changing-the-model model attribute}
  * in both examples equals:
  *
  * ```css
@@ -71,15 +71,22 @@ export default class PictureEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageEditing, ImageUtils ];
+	public static get requires() {
+		return [ ImageEditing, ImageUtils ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'PictureEditing' {
-		return 'PictureEditing';
+	public static get pluginName() {
+		return 'PictureEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -111,7 +118,7 @@ export default class PictureEditing extends Plugin {
 	private _setupConversion(): void {
 		const editor = this.editor;
 		const conversion = editor.conversion;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 
 		conversion.for( 'upcast' ).add( upcastPicture( imageUtils ) );
 		conversion.for( 'downcast' ).add( downcastSourcesAttribute( imageUtils ) );
@@ -129,8 +136,10 @@ export default class PictureEditing extends Plugin {
 			return;
 		}
 
+		const imageUploadEditing: ImageUploadEditing = editor.plugins.get( 'ImageUploadEditing' );
+
 		this.listenTo<ImageUploadCompleteEvent>(
-			editor.plugins.get( 'ImageUploadEditing' ),
+			imageUploadEditing,
 			'uploadComplete',
 			( evt, { imageElement, data } ) => {
 				const sources = data.sources;

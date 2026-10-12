@@ -1,13 +1,14 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor';
-import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
-import GeneralHtmlSupport from '../../src/generalhtmlsupport';
-import { getModelDataWithAttributes } from '../_utils/utils';
-import { getData as getModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
+import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor.js';
+import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph.js';
+import GeneralHtmlSupport from '../../src/generalhtmlsupport.js';
+import { getModelDataWithAttributes } from '../_utils/utils.js';
+import { getData as getModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
+import StyleElementSupport from '../../src/integrations/style.js';
 
 /* global console, document */
 
@@ -42,6 +43,14 @@ describe( 'StyleElementSupport', () => {
 		expect( editor.plugins.has( 'StyleElementSupport' ) ).to.be.true;
 	} );
 
+	it( 'should have `isOfficialPlugin` static flag set to `true`', () => {
+		expect( StyleElementSupport.isOfficialPlugin ).to.be.true;
+	} );
+
+	it( 'should have `isPremiumPlugin` static flag set to `false`', () => {
+		expect( StyleElementSupport.isPremiumPlugin ).to.be.false;
+	} );
+
 	it( 'should allow element', () => {
 		editor.setData( `<p>Foo</p><style>${ STYLE }</style>` );
 
@@ -58,15 +67,15 @@ describe( 'StyleElementSupport', () => {
 		editor.setData( `<p>Foo</p><style type="c++" nonce="qwerty">${ STYLE }</style>` );
 
 		expect( getModelDataWithAttributes( model, { withoutSelection: true } ) ).to.deep.equal( {
-			data: `<paragraph>Foo</paragraph><htmlStyle htmlAttributes="(1)" htmlContent="${ STYLE }"></htmlStyle>`,
+			data: `<paragraph>Foo</paragraph><htmlStyle htmlContent="${ STYLE }" htmlStyleAttributes="(1)"></htmlStyle>`,
 			attributes: {
-				1: {
+				1: STYLE,
+				2: {
 					attributes: {
 						nonce: 'qwerty',
 						type: 'c++'
 					}
-				},
-				2: STYLE
+				}
 			}
 		} );
 
@@ -80,14 +89,14 @@ describe( 'StyleElementSupport', () => {
 		editor.setData( `<p>Foo</p><style type="c++" nonce="qwerty">${ STYLE }</style>` );
 
 		expect( getModelDataWithAttributes( model, { withoutSelection: true } ) ).to.deep.equal( {
-			data: `<paragraph>Foo</paragraph><htmlStyle htmlAttributes="(1)" htmlContent="${ STYLE }"></htmlStyle>`,
+			data: `<paragraph>Foo</paragraph><htmlStyle htmlContent="${ STYLE }" htmlStyleAttributes="(1)"></htmlStyle>`,
 			attributes: {
-				1: {
+				1: STYLE,
+				2: {
 					attributes: {
 						type: 'c++'
 					}
-				},
-				2: STYLE
+				}
 			}
 		} );
 
@@ -153,7 +162,7 @@ describe( 'StyleElementSupport', () => {
 		dataFilter.allowAttributes( { name: 'style', attributes: true } );
 
 		editor.conversion.for( 'downcast' ).add( dispatcher => {
-			dispatcher.on( 'attribute:htmlAttributes:htmlStyle', ( evt, data, conversionApi ) => {
+			dispatcher.on( 'attribute:htmlStyleAttributes:htmlStyle', ( evt, data, conversionApi ) => {
 				conversionApi.consumable.consume( data.item, evt.name );
 			}, { priority: 'high' } );
 		} );
@@ -161,10 +170,10 @@ describe( 'StyleElementSupport', () => {
 		editor.setData( `<p>Foo</p><style nonce="qwerty">${ STYLE }</style>` );
 
 		expect( getModelDataWithAttributes( model, { withoutSelection: true } ) ).to.deep.equal( {
-			data: `<paragraph>Foo</paragraph><htmlStyle htmlAttributes="(1)" htmlContent="${ STYLE }"></htmlStyle>`,
+			data: `<paragraph>Foo</paragraph><htmlStyle htmlContent="${ STYLE }" htmlStyleAttributes="(1)"></htmlStyle>`,
 			attributes: {
-				1: { attributes: { nonce: 'qwerty' } },
-				2: STYLE
+				1: STYLE,
+				2: { attributes: { nonce: 'qwerty' } }
 			}
 		} );
 
@@ -183,10 +192,10 @@ describe( 'StyleElementSupport', () => {
 		editor.setData( `<p>Foo</p><style type="text/css" nonce="qwerty">${ STYLE }</style>` );
 
 		expect( getModelDataWithAttributes( model, { withoutSelection: true } ) ).to.deep.equal( {
-			data: `<paragraph>Foo</paragraph><htmlStyle htmlAttributes="(1)" htmlContent="${ STYLE }"></htmlStyle>`,
+			data: `<paragraph>Foo</paragraph><htmlStyle htmlContent="${ STYLE }" htmlStyleAttributes="(1)"></htmlStyle>`,
 			attributes: {
-				1: { attributes: { type: 'text/css' } },
-				2: STYLE
+				1: STYLE,
+				2: { attributes: { type: 'text/css' } }
 			}
 		} );
 	} );

@@ -1,10 +1,10 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /**
- * @module ckfinder/ckfinder
+ * @module ckfinder/ckfinderconfig
  */
 
 /**
@@ -76,16 +76,4 @@ export interface CKFinderOptions extends Record<string, unknown> {
 	chooseFiles?: boolean;
 	onInit?: ( finder: any ) => void;
 	language?: string;
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface EditorConfig {
-
-		/**
-		 * The configuration of the {@link module:ckfinder/ckfinder~CKFinder CKFinder feature}.
-		 *
-		 * Read more in {@link module:ckfinder/ckfinder~CKFinderConfig}.
-		 */
-		ckfinder?: CKFinderConfig;
-	}
 }

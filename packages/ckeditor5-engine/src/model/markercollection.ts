@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,15 @@
  * @module engine/model/markercollection
  */
 
-import TypeCheckable from './typecheckable';
+import TypeCheckable from './typecheckable.js';
 import LiveRange, {
 	type LiveRangeChangeContentEvent,
 	type LiveRangeChangeRangeEvent,
 	type LiveRangeChangeEvent
-} from './liverange';
+} from './liverange.js';
 
-import type Position from './position';
-import type Range from './range';
+import type Position from './position.js';
+import type Range from './range.js';
 
 import { CKEditorError, EmitterMixin } from '@ckeditor/ckeditor5-utils';
 
@@ -33,7 +33,7 @@ import { CKEditorError, EmitterMixin } from '@ckeditor/ckeditor5-utils';
  *
  * @see module:engine/model/markercollection~Marker
  */
-export default class MarkerCollection extends EmitterMixin() implements Iterable<Marker> {
+export default class MarkerCollection extends /* #__PURE__ */ EmitterMixin() implements Iterable<Marker> {
 	/**
 	 * Stores {@link ~Marker markers} added to the collection.
 	 */
@@ -235,10 +235,10 @@ export default class MarkerCollection extends EmitterMixin() implements Iterable
 	 * Iterates over all markers that starts with given `prefix`.
 	 *
 	 * ```ts
-	 * const markerFooA = markersCollection.set( 'foo:a', rangeFooA );
-	 * const markerFooB = markersCollection.set( 'foo:b', rangeFooB );
-	 * const markerBarA = markersCollection.set( 'bar:a', rangeBarA );
-	 * const markerFooBarA = markersCollection.set( 'foobar:a', rangeFooBarA );
+	 * const markerFooA = markersCollection._set( 'foo:a', rangeFooA );
+	 * const markerFooB = markersCollection._set( 'foo:b', rangeFooB );
+	 * const markerBarA = markersCollection._set( 'bar:a', rangeBarA );
+	 * const markerFooBarA = markersCollection._set( 'foobar:a', rangeFooBarA );
 	 * Array.from( markersCollection.getMarkersGroup( 'foo' ) ); // [ markerFooA, markerFooB ]
 	 * Array.from( markersCollection.getMarkersGroup( 'a' ) ); // []
 	 * ```
@@ -279,9 +279,9 @@ export interface MarkerData {
 }
 
 /**
- * `Marker` is a continuous parts of model (like a range), is named and represent some kind of information about marked
- * part of model document. In contrary to {@link module:engine/model/node~Node nodes}, which are building blocks of
- * model document tree, markers are not stored directly in document tree but in
+ * `Marker` is a continuous part of the model (like a range), is named and represents some kind of information about the
+ * marked part of the model document. In contrary to {@link module:engine/model/node~Node nodes}, which are building blocks of
+ * the model document tree, markers are not stored directly in the document tree but in the
  * {@link module:engine/model/model~Model#markers model markers' collection}. Still, they are document data, by giving
  * additional meaning to the part of a model document between marker start and marker end.
  *
@@ -347,7 +347,7 @@ export interface MarkerData {
  *
  * `Marker` instances are created and destroyed only by {@link ~MarkerCollection MarkerCollection}.
  */
-class Marker extends EmitterMixin( TypeCheckable ) {
+class Marker extends /* #__PURE__ */ EmitterMixin( TypeCheckable ) {
 	/**
 	 * Marker's name.
 	 */
@@ -521,9 +521,9 @@ export type { Marker };
  * {@link module:engine/model/markercollection~MarkerCollection#event:update MarkerCollection update event}.
  *
  * @see module:engine/model/liverange~LiveRange#event:change:range
- * @eventName change:range
+ * @eventName ~Marker#change:range
  */
-export type MarkerCollectionChangeRangeEvent = LiveRangeChangeRangeEvent;
+export type MarkerChangeRangeEvent = LiveRangeChangeRangeEvent;
 
 /**
  * Fired whenever change on {@link module:engine/model/document~Document} is done inside {@link ~Marker#_liveRange marker range}.
@@ -534,19 +534,19 @@ export type MarkerCollectionChangeRangeEvent = LiveRangeChangeRangeEvent;
  * {@link module:engine/model/markercollection~MarkerCollection#event:update MarkerCollection update event}.
  *
  * @see module:engine/model/liverange~LiveRange#event:change:content
- * @eventName change:content
+ * @eventName ~Marker#change:content
  */
 export type MarkerCollectionChangeContentEvent = LiveRangeChangeContentEvent;
 
 /**
  * Describes `change:range` or `change:content` event.
  */
-export type MarkerCollectionChangeEvent = LiveRangeChangeEvent;
+export type MarkerChangeEvent = LiveRangeChangeEvent;
 
 /**
  * Fired whenever marker is added, updated or removed from `MarkerCollection`.
  *
- * @eventName update
+ * @eventName ~MarkerCollection#update
  * @param marker Updated Marker.
  * @param oldRange Marker range before the update. When is not defined it
  * means that marker is just added.

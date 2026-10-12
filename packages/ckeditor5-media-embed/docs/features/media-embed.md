@@ -1,6 +1,7 @@
 ---
 category: features
 menu-title: Media embed
+meta-title: Media embed | CKEditor 5 Documentation
 modified_at: 2021-10-08
 ---
 
@@ -8,15 +9,11 @@ modified_at: 2021-10-08
 
 # Media embed
 
-The media embed feature brings support for inserting embeddable media such as YouTube or Vimeo videos and tweets into your rich text content.
-
-<info-box info>
-	This feature is enabled by default in all {@link installation/getting-started/predefined-builds predefined builds}.
-</info-box>
+The media embed feature lets you insert embeddable media such as YouTube or Vimeo videos and tweets into your rich text content.
 
 ## Demo
 
-You can use the Insert media button in the toolbar {@icon @ckeditor/ckeditor5-media-embed/theme/icons/media.svg Insert media} to embed media like in the following examples. You can also paste the media URL directly into the editor content and it will be [automatically embedded](#automatic-media-embed-on-paste).
+You can use the insert media button in the toolbar {@icon @ckeditor/ckeditor5-media-embed/theme/icons/media.svg Insert media} to embed media. You can also paste a media URL directly into the editor content, and it will be [automatically embedded](#automatic-media-embed-on-paste). Try both approaches with the following URLs:
 
 * <input class="example-input" type="text" value="https://www.youtube.com/watch?v=H08tGjXNHO4">
 * <input class="example-input" type="text" value="https://open.spotify.com/album/2IXlgvecaDqOeF3viUZnPI?si=ogVw7KlcQAGZKK4Jz9QzvA">
@@ -25,45 +22,39 @@ You can use the Insert media button in the toolbar {@icon @ckeditor/ckeditor5-me
 {@snippet features/media-embed}
 
 <info-box info>
-	This demo only presents a limited set of features. Visit the {@link examples/builds/full-featured-editor full-featured editor example} to see more in action.
+	This demo presents a limited set of features. Visit the {@link examples/builds/full-featured-editor feature-rich editor example} to see more in action.
 </info-box>
 
 ## Installation
 
 <info-box info>
-	This feature is enabled by default in all predefined builds. The installation instructions are for developers interested in building their own, custom editor.
+	⚠️ **New import paths**
+
+	Starting with {@link updating/update-to-42 version 42.0.0}, we changed the format of import paths. This guide uses the new, shorter format. Refer to the {@link getting-started/legacy-getting-started/legacy-imports Packages in the legacy setup} guide if you use an older version of CKEditor&nbsp;5.
 </info-box>
 
-To add this feature to your editor, install the [`@ckeditor/ckeditor5-media-embed`](https://www.npmjs.com/package/@ckeditor/ckeditor5-media-embed) package:
+After {@link getting-started/integrations-cdn/quick-start installing the editor}, add the feature to your plugin list and toolbar configuration:
 
-```bash
-npm install --save @ckeditor/ckeditor5-media-embed
-```
-
-Then add `MediaEmbed` to your plugin list and {@link module:media-embed/mediaembed~MediaEmbedConfig configure} the feature (if needed):
-
+<code-switcher>
 ```js
-import MediaEmbed from '@ckeditor/ckeditor5-media-embed/src/mediaembed';
+import { ClassicEditor, MediaEmbed } from 'ckeditor5';
 
 ClassicEditor
 	.create( document.querySelector( '#editor' ), {
+		licenseKey: '<YOUR_LICENSE_KEY>', // Or 'GPL'.
 		plugins: [ MediaEmbed, /* ... */ ],
 		toolbar: [ 'mediaEmbed', /* ... */ ]
 		mediaEmbed: {
-			// Configuration
-			// ...
+			// Configuration.
 		}
 	} )
 	.then( /* ... */ )
 	.catch( /* ... */ );
 ```
+</code-switcher>
 
 <info-box>
 	Depending on how you will configure this feature, you may need to use services like [Iframely](https://iframely.com/) or [Embedly](https://embed.ly/) to display content of embedded media on your target website. Read more about [displaying embedded media](#displaying-embedded-media-on-your-website).
-</info-box>
-
-<info-box info>
-	Read more about {@link installation/getting-started/installing-plugins installing plugins}.
 </info-box>
 
 ## Previewable and non-previewable media
@@ -72,7 +63,7 @@ When the media embed feature is asked to embed a specific media element via its 
 
 ### Previewable media
 
-If, for instance, the URL to embed is `https://www.youtube.com/watch?v=H08tGjXNHO4`, the feature is able to predict that it needs to produce the following HTML to show this YouTube video:
+If, for instance, the URL to embed is `https://www.youtube.com/watch?v=H08tGjXNHO4`, the feature can predict that it needs to produce the following HTML to show this YouTube video:
 
 ```html
 <div style="position: relative; padding-bottom: 100%; height: 0; padding-bottom: 56.2493%;">
@@ -83,34 +74,34 @@ If, for instance, the URL to embed is `https://www.youtube.com/watch?v=H08tGjXNH
 </div>
 ```
 
-Yes, it is quite complex, but this is the cost of creating responsive content for today's web. The crucial part, though, is the iframe's `src` which the media embed feature can predict based on the given video URL and the aspect ratio (which affects `padding-bottom`).
+Yes, it is quite complex, but this is the cost of creating responsive content for today's web. The crucial part, though, is the iframe element's `src` which the media embed feature can predict based on the given video URL and the aspect ratio (which affects `padding-bottom`).
 
-Thanks to the ability to hardcode this URL to HTML transformation, the media embed feature is able to show previews of YouTube, Dailymotion and Vimeo videos as well as Spotify widgets without requesting any external service.
+Thanks to the ability to hardcode this URL to HTML transformation, the media embed feature can show previews of YouTube, Dailymotion, or Vimeo videos, and Spotify widgets without requesting any external service.
 
 ### Non-previewable media
 
-Unfortunately, to show previews of media such as tweets, Instagram photos or Facebook posts, the editor would need to retrieve the content of these from an external service. Some of these media providers expose [oEmbed endpoints](https://oembed.com/) but not all and those endpoint responses often require further processing to be embeddable. Most importantly, though, the media embed feature is often not able to request those services due to [same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy).
+Unfortunately, to show previews of media such as tweets, Instagram photos, or Facebook posts, the editor would need to retrieve the content of these from an external service. Some of these media providers expose [oEmbed endpoints](https://oembed.com/) but not all. These endpoint responses often require further processing to be embeddable. Most importantly, though, the media embed feature is often not able to request these services due to the [same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy).
 
  Also, the media embed feature [does not support asynchronous preview providers](https://github.com/ckeditor/ckeditor5-media-embed/issues/16) yet. Therefore, to still allow embedding tweets or Instagram photos, we chose to:
 
-1. Show a placeholder of the embedded media in the editor (see e.g. how a tweet is presented in the [demo](#demo) above).
+1. Show a placeholder of the embedded media in the editor (see how a tweet is presented in the [demo](#demo) above).
 2. Produce a [semantic `<oembed url="...">` tag](#semantic-data-output-default) in the data output from the editor. This output makes it possible to later use proxy services to [display the content of these media on your website](#displaying-embedded-media-on-your-website).
 
-The above limitations can be overcome with the help of proxy services like Iframely or Embedly, which is explained in the [configuration guide below](#using-external-services-for-preview).
+You can overcome these limitations with the help of proxy services like Iframely or Embedly. This is explained in the [configuration guide below](#using-external-services-for-preview).
 
 ## Configuration
 
 ### Data output format
 
-The data output format of the feature can be configured using the {@link module:media-embed/mediaembed~MediaEmbedConfig#previewsInData `config.mediaEmbed.previewsInData`} option.
+You can configure the data output format of the feature using the {@link module:media-embed/mediaembedconfig~MediaEmbedConfig#previewsInData `config.mediaEmbed.previewsInData`} option.
 
 <info-box info>
-	This option does not change how the media are displayed inside the editor &mdash; the previewable ones will still be displayed with previews. It only affects the output data (see below).
+	This option does not change how the media are displayed inside the editor. The previewable ones will still be displayed with previews. It only affects the output data (see below).
 </info-box>
 
 #### Semantic data output (default)
 
-By default, the media embed feature outputs semantic `<oembed url="...">` tags for previewable and non-previewable media. That being so, it works best when the application processes (expands) the media on the server side or [directly in the front–end](#displaying-embedded-media-on-your-website), preserving the versatile database representation:
+By default, the media embed feature outputs semantic `<oembed url="...">` tags for previewable and non-previewable media. That being so, it works best when the application processes (expands) the media on the server side or [directly in the frontend](#displaying-embedded-media-on-your-website), preserving the versatile database representation:
 
 ```html
 <figure class="media">
@@ -118,7 +109,7 @@ By default, the media embed feature outputs semantic `<oembed url="...">` tags f
 </figure>
 ```
 
-Further customization of the semantic data output can be done through the {@link module:media-embed/mediaembed~MediaEmbedConfig#elementName `config.mediaEmbed.elementName`} configuration. As an example, if `elementName` is set to `o-embed`:
+You can achieve further customization of the semantic data output through the {@link module:media-embed/mediaembedconfig~MediaEmbedConfig#elementName `config.mediaEmbed.elementName`} configuration. As an example, if you set `elementName` to `o-embed`:
 
 ```html
 <figure class="media">
@@ -126,11 +117,11 @@ Further customization of the semantic data output can be done through the {@link
 </figure>
 ```
 
-If `elementName` is overridden to something other than the default value, the existing `<oembed>` elements will still be shown for backwards compatibility purposes.
+If `elementName` is overridden to something other than the default value, the existing `<oembed>` elements will still be shown for backward compatibility purposes.
 
 #### Including previews in data
 
-Optionally, by setting `mediaEmbed.previewsInData` to `true` you can configure the media embed feature to output media in the same way they look in the editor. So if the media element is "previewable", the media preview (HTML) is saved to the database:
+Optionally, by setting `mediaEmbed.previewsInData` to `true` you can configure the media embed feature to output media in the same way they look in the editor. If the media element is "previewable", the media preview (HTML) is saved to the database:
 
 ```html
 <figure class="media">
@@ -140,7 +131,7 @@ Optionally, by setting `mediaEmbed.previewsInData` to `true` you can configure t
 </figure>
 ```
 
-Currently, the preview is only available for content providers for which CKEditor 5 can predict the `<iframe>` code: YouTube, Vimeo, Dailymotion, Spotify, etc. For other providers like Twitter or Instagram the editor cannot produce an `<iframe>` code and it does not, so far, allow retrieving this code from an external oEmbed service. Therefore, for non-previewable media it produces the default semantic output:
+Currently, the preview is only available for content providers for which CKEditor&nbsp;5 can predict the `<iframe>` code: YouTube, Vimeo, Dailymotion, Spotify, etc. For other providers like X (Twitter) or Instagram, the editor cannot produce an `<iframe>` code. It also does not allow retrieving this code from an external oEmbed service. Therefore, for non-previewable media, it produces the default semantic output:
 
 ```html
 <figure class="media">
@@ -148,13 +139,13 @@ Currently, the preview is only available for content providers for which CKEdito
 </figure>
 ```
 
-This means that, unless you [limited the list of providers](#media-providers) to only those which are previewable, you need to [make sure that the media are displayed on your website](#displaying-embedded-media-on-your-website).
+This means that, unless you [limit the list of providers](#media-providers) to only those which are previewable, you need to [make sure that the media are displayed on your website](#displaying-embedded-media-on-your-website).
 
 Read more about [non-previewable media](#previewable-and-non-previewable-media).
 
 ### Media providers
 
-CKEditor 5 comes with several supported media providers that can be extended or altered.
+CKEditor&nbsp;5 comes with several supported media providers that you can extend or alter.
 
 Names of providers **with previews**:
 
@@ -172,24 +163,23 @@ Names of providers **without previews**:
 * `'facebook'`.
 
 <info-box notice>
-	The default media provider configuration does not support all possible media URLs &mdash; only the most common are included. Services like Iframely or Embedly support thousands of media providers and it is up to you to define which you want to allow.
+	The default media provider configuration does not support all possible media URLs &ndash; only the most common are included. Services like Iframely or Embedly support thousands of media providers. It is up to you to define which you want to allow.
 </info-box>
 
 #### Extending media providers
 
-To extend the default list of providers, use {@link module:media-embed/mediaembed~MediaEmbedConfig#extraProviders `config.mediaEmbed.extraProviders`}.
+To extend the default list of providers, use {@link module:media-embed/mediaembedconfig~MediaEmbedConfig#extraProviders `config.mediaEmbed.extraProviders`}.
 
 #### Removing media providers
 
-To remove certain providers, use {@link module:media-embed/mediaembed~MediaEmbedConfig#removeProviders `config.mediaEmbed.removeProviders`}.
+To remove certain providers, use {@link module:media-embed/mediaembedconfig~MediaEmbedConfig#removeProviders `config.mediaEmbed.removeProviders`}.
 
 For instance, to leave only the previewable providers, configure this feature as follows:
 
 ```js
 ClassicEditor
 	.create( document.querySelector( '#editor' ), {
-		plugins: [ MediaEmbed, /* ... */ ],
-		toolbar: [ 'mediaEmbed', /* ... */ ]
+		// ... Other configuration options ...
 		mediaEmbed: {
 			removeProviders: [ 'instagram', 'twitter', 'googleMaps', 'flickr', 'facebook' ]
 		}
@@ -200,23 +190,22 @@ ClassicEditor
 
 #### Overriding media providers
 
-To override the default providers, use {@link module:media-embed/mediaembed~MediaEmbedConfig#providers `config.mediaEmbed.providers`} and define your set according to the {@link module:media-embed/mediaembed~MediaEmbedProvider provider syntax}:
+To override the default providers, use {@link module:media-embed/mediaembedconfig~MediaEmbedConfig#providers `config.mediaEmbed.providers`} and define your set according to the {@link module:media-embed/mediaembedconfig~MediaEmbedProvider provider syntax}:
 
 ```js
 ClassicEditor
 	.create( document.querySelector( '#editor' ), {
-		plugins: [ MediaEmbed, /* ... */ ],,
-		toolbar: [ 'mediaEmbed', /* ... */ ]
+		// ... Other configuration options ...
 		mediaEmbed: {
 			providers: [
 				{
-					// A URL regexp or an array of URL regexps:
+					// A URL regular expression or an array of URL regular expressions:
 					url: /^example\.com\/media\/(\w+)/,
 
 					// To be defined only if the media are previewable:
 					html: match => '...'
 				},
-				// More providers. 
+				// More providers.
 				// ...
 			]
 		}
@@ -225,13 +214,13 @@ ClassicEditor
 	.catch( /* ... */ );
 ```
 
-You can take inspiration from the default configuration of this feature which you can find in: [https://github.com/ckeditor/ckeditor5/blob/master/packages/ckeditor5-media-embed/src/mediaembedediting.js](https://github.com/ckeditor/ckeditor5/blob/master/packages/ckeditor5-media-embed/src/mediaembedediting.js)
+You can take inspiration from the default configuration of this feature. You can find it in [https://github.com/ckeditor/ckeditor5/blob/master/packages/ckeditor5-media-embed/src/mediaembedediting.ts](https://github.com/ckeditor/ckeditor5/blob/master/packages/ckeditor5-media-embed/src/mediaembedediting.ts)
 
 ## Using external services for preview
 
-To get around the limitations of showing media embed previews, you can use services like [Iframely](https://iframely.com/) - this will allow having a rich preview of the content inside CKEditor 5. By inserting an Iframely-hosted `<iframe>`, you are able to preview the content from hundreds of media providers.
+To get around the limitations of showing media embed previews, you can use services like [Iframely](https://iframely.com/). This will allow a rich preview of the content inside CKEditor&nbsp;5. By inserting an Iframely-hosted `<iframe>`, you can preview the content from hundreds of media providers.
 
-Follow the [Iframely integration with CKEditor 5](https://iframely.com/docs/ckeditor) page for a detailed explanation. You can also check the final result in the demo below (keep in mind that if you are using ad blocking software, it might also block the previews inside the editor):
+Follow the [Iframely integration with CKEditor&nbsp;5](https://iframely.com/docs/ckeditor) page for a detailed explanation. You can also check the final result in the demo below. If you are using ad-blocking software, it might also block the previews inside the editor.
 
 {@snippet features/media-embed-preview}
 
@@ -239,15 +228,15 @@ Follow the [Iframely integration with CKEditor 5](https://iframely.com/docs/cked
 
 By default, the media embed feature produces output that does not contain previews of embedded media, called the [semantic output](#semantic-data-output-default). This means that you need to transform the output `<oembed>` elements into real media on your target website.
 
-There are many ways to do that. The simplest, plug-and-play solutions are described here. You can also implement this transformation as part of your back-end service or you can use different services than described in this section.
+There are many ways to do that. The simplest, plug-and-play solutions are described here. You can also implement this transformation as part of your backend service or you can use different services than described in this section.
 
 <info-box>
-	While the easiest solution (which is described below) is to replace embedded media on the client side, it is not necessarily the most optimal way. A more powerful and flexible solution is to request those services on your back-end. Refer to the documentation of the service of your choice for more information.
+	While the easiest solution (described below) is to replace embedded media on the client side, it is not necessarily the most optimal way. A more powerful and flexible solution is to request these services on your backend. Refer to the documentation of the service of your choice for more information.
 </info-box>
 
 ### Iframely
 
-[Iframely](https://iframely.com) offers the [embed.js](https://iframely.com/docs/embedjs) library which converts [various media](https://iframely.com/docs/providers) URLs into rich previews. It works in the front–end and remains fully compatible with the output produced by CKEditor 5.
+[Iframely](https://iframely.com) offers the [embed.js](https://iframely.com/docs/embedjs) library which converts [various media](https://iframely.com/docs/providers) URLs into rich previews. It works in the frontend and remains fully compatible with the output produced by CKEditor&nbsp;5.
 
 First, having [secured the API key](https://iframely.com/docs/allow-origins), load the `embed.js` library from the CDN into your website:
 
@@ -261,11 +250,11 @@ First, having [secured the API key](https://iframely.com/docs/allow-origins), lo
 
 #### Semantic data
 
-You can convert all `<oembed>` elements like the following Twitter post produced by CKEditor 5:
+You can convert all `<oembed>` elements like the following X (Twitter) post produced by CKEditor&nbsp;5:
 
 ```html
 <figure class="media">
-	<oembed url="https://twitter.com/ckeditor/status/1021777799844126720"></oembed>
+	<oembed url="https://x.com/ckeditor/status/1021777799844126720"></oembed>
 </figure>
 ```
 
@@ -281,17 +270,17 @@ using this short code snippet:
 
 #### Non-semantic data
 
-When the feature is configured to [include media previews](#including-previews-in-data) in the output, you can still use Iframely for media embeds like the following one:
+When you configure the feature to [include media previews](#including-previews-in-data) in the output, you can still use Iframely for media embeds like the following one:
 
 ```html
 <figure class="media">
-	<div data-oembed-url="https://twitter.com/ckeditor/status/1021777799844126720">
+	<div data-oembed-url="https://x.com/ckeditor/status/1021777799844126720">
 		[Media preview]
 	</div>
 </figure>
 ```
 
-The above data can still be converted by Iframely with just a few extra lines of code. To do that, in addition to the code snippet from the previous section, use a slightly longer code snippet which discards the media preview saved in the database before using `iframely.load()`:
+You can still convert this data by Iframely with just a few extra lines of code. To do that, in addition to the code snippet from the previous section, use a slightly longer code snippet that discards the media preview saved in the database before using `iframely.load()`:
 
 ```html
 <script>
@@ -323,11 +312,11 @@ To start using it, load the library from the CDN into your website:
 
 #### Semantic data
 
-You can convert `<oembed>` elements like the following Twitter post produced by CKEditor 5:
+You can convert `<oembed>` elements like the following Twitter (X) post produced by CKEditor&nbsp;5:
 
 ```html
 <figure class="media">
-	<oembed url="https://twitter.com/ckeditor/status/1021777799844126720"></oembed>
+	<oembed url="https://x.com/ckeditor/status/1021777799844126720"></oembed>
 </figure>
 ```
 
@@ -378,17 +367,17 @@ In this case, the code is almost the same as with the semantic data but you shou
 
 By default, the {@link module:media-embed/mediaembed~MediaEmbed} plugin loads the {@link module:media-embed/automediaembed~AutoMediaEmbed} as a dependency.
 
-The {@link module:media-embed/automediaembed~AutoMediaEmbed} plugin recognizes media links in the pasted content and embeds them shortly after they are injected into the document to speed up the editing. Just like the "traditional" embedding (i.e. by using the toolbar button), automatic embedding works for all media providers specified in the [configuration](#media-providers).
+The {@link module:media-embed/automediaembed~AutoMediaEmbed} plugin recognizes media links in the pasted content and embeds them shortly after they are injected into the document to speed up the editing. Just like the "traditional" embedding (using the toolbar button), automatic embedding works for all media providers specified in the [configuration](#media-providers).
 
 <info-box>
 	The media URL must be the only content pasted to be properly embedded. Multiple links (`"http://media.url http://another.media.url"`) as well as bigger chunks of content (`"This link http://media.url will not be auto–embedded when pasted."`) are ignored.
 </info-box>
 
-If the automatic embedding was unexpected, for instance when the link was meant to remain in the content as text, simply undo the action (by clicking the "Undo" button in the toolbar or using the <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Z</kbd> keystrokes).
+If the automatic embedding was unexpected, for instance when the link was meant to remain in the content as text, undo the action (by clicking the "Undo" button in the toolbar or using the <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Z</kbd> keystrokes).
 
 ## Styling media in the editor content
 
-While the editor comes with default styles for popular media providers like Facebook, Instagram or Twitter, you can create additional styles for non-previewable media in your editor content to help users identify them.
+While the editor comes with default styles for popular media providers like Facebook, Instagram or X, you can create additional styles for non-previewable media in your editor content to help users identify them.
 
 ### Styling non-previewable media
 
@@ -460,7 +449,7 @@ mediaEmbed: {
 }
 ```
 
-Having your styles defined and the media provider configured, insert the new media into your editor, e.g. the following URL `https://ckeditor.com/path/to/media`. You should see something like this:
+Having your styles defined and the media provider configured, insert the new media into your editor, for example, the following URL: `https://ckeditor.com/path/to/media`. You should see something like this:
 
 {@img assets/img/features-media-embed-ckeditor.png 791 The example media style of the media}
 
@@ -477,9 +466,9 @@ The {@link module:media-embed/mediaembed~MediaEmbed} plugin registers:
 	```
 
 <info-box>
-	We recommend using the official {@link framework/guides/development-tools#ckeditor-5-inspector CKEditor 5 inspector} for development and debugging. It will give you tons of useful information about the state of the editor such as internal data structures, selection, commands, and many more.
+	We recommend using the official {@link framework/development-tools/inspector CKEditor&nbsp;5 inspector} for development and debugging. It will give you tons of useful information about the state of the editor such as internal data structures, selection, commands, and many more.
 </info-box>
 
 ## Contribute
 
-The source code of the feature is available on GitHub in [https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-media-embed](https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-media-embed).
+The source code of the feature is available on GitHub at [https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-media-embed](https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-media-embed).

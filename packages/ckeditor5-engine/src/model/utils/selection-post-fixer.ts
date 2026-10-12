@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,15 @@
  * @module engine/model/utils/selection-post-fixer
  */
 
-import Position from '../position';
-import Range from '../range';
+import Position from '../position.js';
+import Range from '../range.js';
 
-import type DocumentFragment from '../documentfragment';
-import type Model from '../model';
-import type Node from '../node';
-import type Schema from '../schema';
-import type Writer from '../writer';
-import type Element from '../element';
+import type DocumentFragment from '../documentfragment.js';
+import type Model from '../model.js';
+import type Node from '../node.js';
+import type Schema from '../schema.js';
+import type Writer from '../writer.js';
+import type Element from '../element.js';
 
 /**
  * Injects selection post-fixer to the model.
@@ -114,9 +114,11 @@ function selectionPostFixer( writer: Writer, model: Model ): boolean {
 /**
  * Tries fixing a range if it's incorrect.
  *
+ * **Note:** This helper is used by the selection post-fixer and to fix the `beforeinput` target ranges.
+ *
  * @returns Returns fixed range or null if range is valid.
  */
-function tryFixingRange( range: Range, schema: Schema ) {
+export function tryFixingRange( range: Range, schema: Schema ): Range | null {
 	if ( range.isCollapsed ) {
 		return tryFixingCollapsedRange( range, schema );
 	}

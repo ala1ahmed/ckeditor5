@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,8 @@
  * @module block-quote/blockquoteui
  */
 
-import { Plugin, icons } from 'ckeditor5/src/core';
-import { ButtonView } from 'ckeditor5/src/ui';
+import { Plugin, icons } from 'ckeditor5/src/core.js';
+import { ButtonView, MenuBarMenuListItemButtonView } from 'ckeditor5/src/ui.js';
 
 import '../theme/blockquote.css';
 
@@ -23,8 +23,15 @@ export default class BlockQuoteUI extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'BlockQuoteUI' {
-		return 'BlockQuoteUI';
+	public static get pluginName() {
+		return 'BlockQuoteUI' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -32,35 +39,53 @@ export default class BlockQuoteUI extends Plugin {
 	 */
 	public init(): void {
 		const editor = this.editor;
-		const t = editor.t;
 
-		editor.ui.componentFactory.add( 'blockQuote', locale => {
-			const command = editor.commands.get( 'blockQuote' )!;
-			const buttonView = new ButtonView( locale );
+		editor.ui.componentFactory.add( 'blockQuote', () => {
+			const buttonView = this._createButton( ButtonView );
 
 			buttonView.set( {
-				label: t( 'Block quote' ),
-				icon: icons.quote,
-				tooltip: true,
-				isToggleable: true
+				tooltip: true
 			} );
 
-			// Bind button model to command.
-			buttonView.bind( 'isOn', 'isEnabled' ).to( command, 'value', 'isEnabled' );
+			return buttonView;
+		} );
 
-			// Execute command.
-			this.listenTo( buttonView, 'execute', () => {
-				editor.execute( 'blockQuote' );
-				editor.editing.view.focus();
+		editor.ui.componentFactory.add( 'menuBar:blockQuote', () => {
+			const buttonView = this._createButton( MenuBarMenuListItemButtonView );
+
+			buttonView.set( {
+				role: 'menuitemcheckbox'
 			} );
 
 			return buttonView;
 		} );
 	}
-}
 
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ BlockQuoteUI.pluginName ]: BlockQuoteUI;
+	/**
+	 * Creates a button for block quote command to use either in toolbar or in menu bar.
+	 */
+	private _createButton<T extends typeof ButtonView | typeof MenuBarMenuListItemButtonView>( ButtonClass: T ): InstanceType<T> {
+		const editor = this.editor;
+		const locale = editor.locale;
+		const command = editor.commands.get( 'blockQuote' )!;
+		const view = new ButtonClass( editor.locale ) as InstanceType<T>;
+		const t = locale.t;
+
+		view.set( {
+			label: t( 'Block quote' ),
+			icon: icons.quote,
+			isToggleable: true
+		} );
+
+		view.bind( 'isEnabled' ).to( command, 'isEnabled' );
+		view.bind( 'isOn' ).to( command, 'value' );
+
+		// Execute the command.
+		this.listenTo( view, 'execute', () => {
+			editor.execute( 'blockQuote' );
+			editor.editing.view.focus();
+		} );
+
+		return view;
 	}
 }

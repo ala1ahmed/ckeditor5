@@ -1,21 +1,22 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import Model from '../../src/model/model';
-import Element from '../../src/model/element';
-import RootElement from '../../src/model/rootelement';
-import count from '@ckeditor/ckeditor5-utils/src/count';
+import Model from '../../src/model/model.js';
+import Element from '../../src/model/element.js';
+import RootElement from '../../src/model/rootelement.js';
+import count from '@ckeditor/ckeditor5-utils/src/count.js';
 
 describe( 'RootElement', () => {
 	describe( 'constructor()', () => {
-		it( 'should create root element without attributes', () => {
+		it( 'should create attached root element without attributes', () => {
 			const model = new Model();
 			const doc = model.document;
 			const root = new RootElement( doc );
 
 			expect( root ).to.be.an.instanceof( Element );
+			expect( root.isAttached() ).to.be.true;
 			expect( root ).to.have.property( 'document' ).that.equals( doc );
 			expect( count( root.getAttributes() ) ).to.equal( 0 );
 			expect( root.childCount ).to.equal( 0 );

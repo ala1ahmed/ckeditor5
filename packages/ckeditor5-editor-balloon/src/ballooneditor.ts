@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -9,47 +9,37 @@
 
 import {
 	Editor,
-	DataApiMixin,
 	ElementApiMixin,
 	attachToForm,
 	secureSourceElement,
 	type EditorConfig,
 	type EditorReadyEvent
-} from 'ckeditor5/src/core';
+} from 'ckeditor5/src/core.js';
 
-import { BalloonToolbar } from 'ckeditor5/src/ui';
-import { CKEditorError, getDataFromElement } from 'ckeditor5/src/utils';
+import { BalloonToolbar } from 'ckeditor5/src/ui.js';
+import { CKEditorError, getDataFromElement } from 'ckeditor5/src/utils.js';
 
-import BalloonEditorUI from './ballooneditorui';
-import BalloonEditorUIView from './ballooneditoruiview';
+import BalloonEditorUI from './ballooneditorui.js';
+import BalloonEditorUIView from './ballooneditoruiview.js';
 
 import { isElement as _isElement } from 'lodash-es';
 
 /**
- * The {@glink installation/getting-started/predefined-builds#balloon-editor balloon editor}
- * implementation (Medium-like editor).
+ * The balloon editor implementation (Medium-like editor).
  * It uses an inline editable and a toolbar based on the {@link module:ui/toolbar/balloon/balloontoolbar~BalloonToolbar}.
  * See the {@glink examples/builds/balloon-editor demo}.
  *
  * In order to create a balloon editor instance, use the static
  * {@link module:editor-balloon/ballooneditor~BalloonEditor.create `BalloonEditor.create()`} method.
- *
- * # Balloon editor and balloon build
- *
- * The balloon editor can be used directly from source (if you installed the
- * [`@ckeditor/ckeditor5-editor-balloon`](https://www.npmjs.com/package/@ckeditor/ckeditor5-editor-balloon) package)
- * but it is also available in the {@glink installation/getting-started/predefined-builds#balloon-editor balloon build}.
- *
- * {@glink installation/getting-started/predefined-builds Builds}
- * are ready-to-use editors with plugins bundled in. When using the editor from
- * source you need to take care of loading all plugins by yourself
- * (through the {@link module:core/editor/editorconfig~EditorConfig#plugins `config.plugins`} option).
- * Using the editor from source gives much better flexibility and allows easier customization.
- *
- * Read more about initializing the editor from source or as a build in
- * {@link module:editor-balloon/ballooneditor~BalloonEditor.create `BalloonEditor.create()`}.
  */
-export default class BalloonEditor extends DataApiMixin( ElementApiMixin( Editor ) ) {
+export default class BalloonEditor extends /* #__PURE__ */ ElementApiMixin( Editor ) {
+	/**
+	 * @inheritDoc
+	 */
+	public static override get editorName(): 'BalloonEditor' {
+		return 'BalloonEditor';
+	}
+
 	/**
 	 * @inheritDoc
 	 */
@@ -82,7 +72,7 @@ export default class BalloonEditor extends DataApiMixin( ElementApiMixin( Editor
 
 		if ( isElement( sourceElementOrData ) ) {
 			this.sourceElement = sourceElementOrData;
-			secureSourceElement( this );
+			secureSourceElement( this, sourceElementOrData );
 		}
 
 		const plugins = this.config.get( 'plugins' )!;
@@ -94,7 +84,7 @@ export default class BalloonEditor extends DataApiMixin( ElementApiMixin( Editor
 
 		this.model.document.createRoot();
 
-		const view = new BalloonEditorUIView( this.locale, this.editing.view, this.sourceElement );
+		const view = new BalloonEditorUIView( this.locale, this.editing.view, this.sourceElement, this.config.get( 'label' ) );
 		this.ui = new BalloonEditorUI( this, view );
 
 		attachToForm( this );
@@ -195,14 +185,10 @@ export default class BalloonEditor extends DataApiMixin( ElementApiMixin( Editor
 	 *
 	 * # Using the editor from source
 	 *
-	 * The code samples listed in the previous sections of this documentation assume that you are using an
-	 * {@glink installation/getting-started/predefined-builds editor build} (for example – `@ckeditor/ckeditor5-build-balloon`).
-	 *
-	 * If you want to use the balloon editor from source (`@ckeditor/ckeditor5-editor-balloon/src/ballooneditor`),
+	 * If you want to use the balloon editor,
 	 * you need to define the list of
 	 * {@link module:core/editor/editorconfig~EditorConfig#plugins plugins to be initialized} and
-	 * {@link module:core/editor/editorconfig~EditorConfig#toolbar toolbar items}. Read more about using the editor from
-	 * source in the {@glink installation/advanced/alternative-setups/integrating-from-source dedicated} guide.
+	 * {@link module:core/editor/editorconfig~EditorConfig#toolbar toolbar items}.
 	 *
 	 * @param sourceElementOrData The DOM element that will be the source for the created editor
 	 * or the editor's initial data.
@@ -218,7 +204,7 @@ export default class BalloonEditor extends DataApiMixin( ElementApiMixin( Editor
 	 * @param config The editor configuration.
 	 * @returns A promise resolved once the editor is ready. The promise resolves with the created editor instance.
 	 */
-	public static create( sourceElementOrData: HTMLElement | string, config: EditorConfig = {} ): Promise<BalloonEditor> {
+	public static override create( sourceElementOrData: HTMLElement | string, config: EditorConfig = {} ): Promise<BalloonEditor> {
 		return new Promise( resolve => {
 			if ( isElement( sourceElementOrData ) && sourceElementOrData.tagName === 'TEXTAREA' ) {
 				// Documented in core/editor/editor.js

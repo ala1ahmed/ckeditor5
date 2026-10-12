@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,14 @@
  * @module image/autoimage
  */
 
-import { Plugin, type PluginDependencies, type Editor } from 'ckeditor5/src/core';
-import { Clipboard } from 'ckeditor5/src/clipboard';
-import { LivePosition, LiveRange } from 'ckeditor5/src/engine';
-import { Undo } from 'ckeditor5/src/undo';
-import { Delete } from 'ckeditor5/src/typing';
-import { global } from 'ckeditor5/src/utils';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import { Clipboard, type ClipboardPipeline } from 'ckeditor5/src/clipboard.js';
+import { LivePosition, LiveRange } from 'ckeditor5/src/engine.js';
+import { Undo } from 'ckeditor5/src/undo.js';
+import { Delete } from 'ckeditor5/src/typing.js';
+import { global } from 'ckeditor5/src/utils.js';
 
-import ImageUtils from './imageutils';
+import ImageUtils from './imageutils.js';
 
 // Implements the pattern: http(s)://(www.)example.com/path/to/resource.ext?query=params&maybe=too.
 const IMAGE_URL_REGEXP = new RegExp( String( /^(http(s)?:\/\/)?[\w-]+\.[\w.~:/[\]@!$&'()*+,;=%-]+/.source +
@@ -30,15 +30,22 @@ export default class AutoImage extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ Clipboard, ImageUtils, Undo, Delete ];
+	public static get requires() {
+		return [ Clipboard, ImageUtils, Undo, Delete ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'AutoImage' {
-		return 'AutoImage';
+	public static get pluginName() {
+		return 'AutoImage' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -70,11 +77,12 @@ export default class AutoImage extends Plugin {
 	public init(): void {
 		const editor = this.editor;
 		const modelDocument = editor.model.document;
+		const clipboardPipeline: ClipboardPipeline = editor.plugins.get( 'ClipboardPipeline' );
 
 		// We need to listen on `Clipboard#inputTransformation` because we need to save positions of selection.
 		// After pasting, the content between those positions will be checked for a URL that could be transformed
 		// into an image.
-		this.listenTo( editor.plugins.get( 'ClipboardPipeline' ), 'inputTransformation', () => {
+		this.listenTo( clipboardPipeline, 'inputTransformation', () => {
 			const firstRange = modelDocument.selection.getFirstRange()!;
 
 			const leftLivePosition = LivePosition.fromPosition( firstRange.start );
@@ -115,7 +123,7 @@ export default class AutoImage extends Plugin {
 		const urlRange = new LiveRange( leftPosition, rightPosition );
 		const walker = urlRange.getWalker( { ignoreElementEnd: true } );
 		const selectionAttributes = Object.fromEntries( editor.model.document.selection.getAttributes() );
-		const imageUtils = this.editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = this.editor.plugins.get( 'ImageUtils' );
 
 		let src = '';
 
@@ -170,13 +178,9 @@ export default class AutoImage extends Plugin {
 				this._positionToInsert = null;
 			} );
 
-			editor.plugins.get( 'Delete' ).requestUndoOnBackspace();
-		}, 100 );
-	}
-}
+			const deletePlugin: Delete = editor.plugins.get( 'Delete' );
 
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ AutoImage.pluginName ]: AutoImage;
+			deletePlugin.requestUndoOnBackspace();
+		}, 100 );
 	}
 }

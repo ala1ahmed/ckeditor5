@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,20 +7,29 @@
  * @module ui/list/listitemview
  */
 
-import View from '../view';
+import View from '../view.js';
 
-import type { FocusableView } from '../focuscycler';
-import type ViewCollection from '../viewcollection';
+import type { FocusableView } from '../focuscycler.js';
+import type ViewCollection from '../viewcollection.js';
+
 import type { Locale } from '@ckeditor/ckeditor5-utils';
 
 /**
  * The list item view class.
- *
- * @extends module:ui/view~View
  */
 export default class ListItemView extends View {
-	public readonly children: ViewCollection;
+	/**
+	 * Collection of the child views inside of the list item {@link #element}.
+	 */
+	public readonly children: ViewCollection<FocusableView>;
 
+	/**
+	 * Controls whether the item view is visible. Visible by default, list items are hidden
+	 * using a CSS class.
+	 *
+	 * @observable
+	 * @default true
+	 */
 	declare public isVisible: boolean;
 
 	/**
@@ -31,22 +40,8 @@ export default class ListItemView extends View {
 
 		const bind = this.bindTemplate;
 
-		/**
-		 * Controls whether the item view is visible. Visible by default, list items are hidden
-		 * using a CSS class.
-		 *
-		 * @observable
-		 * @default true
-		 * @member {Boolean} #isVisible
-		 */
 		this.set( 'isVisible', true );
 
-		/**
-		 * Collection of the child views inside of the list item {@link #element}.
-		 *
-		 * @readonly
-		 * @member {module:ui/viewcollection~ViewCollection}
-		 */
 		this.children = this.createCollection();
 
 		this.setTemplate( {
@@ -57,7 +52,8 @@ export default class ListItemView extends View {
 					'ck',
 					'ck-list__item',
 					bind.if( 'isVisible', 'ck-hidden', value => !value )
-				]
+				],
+				role: 'presentation'
 			},
 
 			children: this.children
@@ -68,6 +64,8 @@ export default class ListItemView extends View {
 	 * Focuses the list item.
 	 */
 	public focus(): void {
-		( this.children.first as FocusableView ).focus();
+		if ( this.children.first ) {
+			this.children.first.focus();
+		}
 	}
 }

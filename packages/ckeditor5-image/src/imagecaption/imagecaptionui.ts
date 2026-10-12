@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,9 +7,10 @@
  * @module image/imagecaption/imagecaptionui
  */
 
-import { Plugin, icons, type PluginDependencies } from 'ckeditor5/src/core';
-import { ButtonView } from 'ckeditor5/src/ui';
-import ImageCaptionUtils from './imagecaptionutils';
+import { Plugin, icons } from 'ckeditor5/src/core.js';
+import { ButtonView } from 'ckeditor5/src/ui.js';
+import ImageCaptionUtils from './imagecaptionutils.js';
+import type ToggleImageCaptionCommand from './toggleimagecaptioncommand.js';
 
 /**
  * The image caption UI plugin. It introduces the `'toggleImageCaption'` UI button.
@@ -18,15 +19,22 @@ export default class ImageCaptionUI extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageCaptionUtils ];
+	public static get requires() {
+		return [ ImageCaptionUtils ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageCaptionUI' {
-		return 'ImageCaptionUI';
+	public static get pluginName() {
+		return 'ImageCaptionUI' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -35,11 +43,11 @@ export default class ImageCaptionUI extends Plugin {
 	public init(): void {
 		const editor = this.editor;
 		const editingView = editor.editing.view;
-		const imageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
+		const imageCaptionUtils: ImageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
 		const t = editor.t;
 
 		editor.ui.componentFactory.add( 'toggleImageCaption', locale => {
-			const command = editor.commands.get( 'toggleImageCaption' )!;
+			const command: ToggleImageCaptionCommand = editor.commands.get( 'toggleImageCaption' )!;
 			const view = new ButtonView( locale );
 
 			view.set( {
@@ -72,11 +80,5 @@ export default class ImageCaptionUI extends Plugin {
 
 			return view;
 		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ ImageCaptionUI.pluginName ]: ImageCaptionUI;
 	}
 }

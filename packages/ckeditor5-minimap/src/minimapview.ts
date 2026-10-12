@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,11 @@
  * @module minimap/minimapview
  */
 
-import { View } from 'ckeditor5/src/ui';
-import { Rect, type Locale } from 'ckeditor5/src/utils';
+import { View } from 'ckeditor5/src/ui.js';
+import { Rect, type Locale } from 'ckeditor5/src/utils.js';
 
-import MinimapIframeView from './minimapiframeview';
-import MinimapPositionTrackerView from './minimappositiontrackerview';
+import MinimapIframeView from './minimapiframeview.js';
+import MinimapPositionTrackerView from './minimappositiontrackerview.js';
 
 export type MinimapViewOptions = {
 	domRootClone: HTMLElement;
@@ -190,7 +190,7 @@ export default class MinimapView extends View {
 /**
  * Fired when the minimap view is clicked.
  *
- * @eventName click
+ * @eventName ~MinimapView#click
  * @param percentage The number between 0 and 1 representing a place in the minimap (its height) that was clicked.
  */
 export type MinimapClickEvent = {
@@ -201,7 +201,7 @@ export type MinimapClickEvent = {
 /**
  * Fired when the position tracker is dragged or the minimap is scrolled via mouse wheel.
  *
- * @eventName drag
+ * @eventName ~MinimapView#drag
  * @param movementY The vertical movement of the minimap as a result of dragging or scrolling.
  */
 export type MinimapDragEvent = {

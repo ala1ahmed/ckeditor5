@@ -1,15 +1,15 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* global document */
 
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
-import Locale from '@ckeditor/ckeditor5-utils/src/locale';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
+import Locale from '@ckeditor/ckeditor5-utils/src/locale.js';
 
-import BodyCollection from '../../src/editorui/bodycollection';
-import View from '../../src/view';
+import BodyCollection from '../../src/editorui/bodycollection.js';
+import View from '../../src/view.js';
 
 describe( 'BodyCollection', () => {
 	let locale;
@@ -26,6 +26,7 @@ describe( 'BodyCollection', () => {
 		for ( const wrapper of wrappers ) {
 			wrapper.remove();
 		}
+		delete BodyCollection._bodyWrapper;
 	} );
 
 	describe( 'constructor', () => {
@@ -55,8 +56,9 @@ describe( 'BodyCollection', () => {
 
 			expect( wrappers.length ).to.equal( 1 );
 			expect( wrappers[ 0 ].parentNode ).to.equal( document.body );
+			expect( BodyCollection._bodyWrapper ).to.equal( wrappers[ 0 ] );
 
-			const el = body._bodyCollectionContainer;
+			const el = body.bodyCollectionContainer;
 
 			expect( el.parentNode ).to.equal( wrappers[ 0 ] );
 			expect( el.classList.contains( 'ck' ) ).to.be.true;
@@ -65,12 +67,22 @@ describe( 'BodyCollection', () => {
 			expect( el.classList.contains( 'ck-reset_all' ) ).to.be.true;
 		} );
 
+		it( 'sets the role attirbute', () => {
+			const body = new BodyCollection( locale );
+
+			body.attachToDom();
+
+			const el = body.bodyCollectionContainer;
+
+			expect( el.getAttribute( 'role' ) ).to.equal( 'application' );
+		} );
+
 		it( 'sets the right dir attribute to the body region (LTR)', () => {
 			const body = new BodyCollection( locale );
 
 			body.attachToDom();
 
-			const el = body._bodyCollectionContainer;
+			const el = body.bodyCollectionContainer;
 
 			expect( el.getAttribute( 'dir' ) ).to.equal( 'ltr' );
 		} );
@@ -81,7 +93,7 @@ describe( 'BodyCollection', () => {
 
 			body.attachToDom();
 
-			const el = body._bodyCollectionContainer;
+			const el = body.bodyCollectionContainer;
 
 			expect( el.getAttribute( 'dir' ) ).to.equal( 'rtl' );
 		} );
@@ -101,6 +113,52 @@ describe( 'BodyCollection', () => {
 			expect( document.querySelectorAll( '.ck-body-wrapper' ).length ).to.equal( 1 );
 			expect( bodyElements.length ).to.equal( 2 );
 			expect( bodyElements[ 0 ].parentNode ).to.equal( bodyElements[ 1 ].parentNode );
+			expect( BodyCollection._bodyWrapper ).to.equal( bodyElements[ 0 ].parentNode );
+		} );
+
+		it( 'should create another wrapper if the previous one got disconnected from DOM', () => {
+			const body1 = new BodyCollection( locale );
+			body1.attachToDom();
+
+			let wrappers, bodyContainers;
+
+			wrappers = document.querySelectorAll( '.ck-body-wrapper' );
+			bodyContainers = document.querySelectorAll( '.ck-body' );
+
+			expect( wrappers.length ).to.equal( 1 );
+			expect( bodyContainers.length ).to.equal( 1 );
+
+			// Some external code breaks the wrapper.
+			wrappers[ 0 ].remove();
+
+			const body2 = new BodyCollection( locale );
+			body2.attachToDom();
+
+			wrappers = document.querySelectorAll( '.ck-body-wrapper' );
+			bodyContainers = document.querySelectorAll( '.ck-body' );
+
+			expect( wrappers.length ).to.equal( 1 );
+			expect( bodyContainers.length ).to.equal( 1 );
+			expect( bodyContainers[ 0 ] ).to.equal( body2.bodyCollectionContainer );
+			expect( body2.bodyCollectionContainer.parentElement ).to.equal( wrappers[ 0 ] );
+
+			body1.detachFromDom();
+
+			wrappers = document.querySelectorAll( '.ck-body-wrapper' );
+			bodyContainers = document.querySelectorAll( '.ck-body' );
+
+			expect( wrappers.length ).to.equal( 1 );
+			expect( bodyContainers.length ).to.equal( 1 );
+			expect( bodyContainers[ 0 ] ).to.equal( body2.bodyCollectionContainer );
+			expect( body2.bodyCollectionContainer.parentElement ).to.equal( wrappers[ 0 ] );
+
+			body2.detachFromDom();
+
+			wrappers = document.querySelectorAll( '.ck-body-wrapper' );
+			bodyContainers = document.querySelectorAll( '.ck-body' );
+
+			expect( wrappers.length ).to.equal( 0 );
+			expect( bodyContainers.length ).to.equal( 0 );
 		} );
 
 		it( 'should render views in proper body collections', () => {
@@ -137,8 +195,8 @@ describe( 'BodyCollection', () => {
 			expect( wrappers.length ).to.equal( 1 );
 
 			const wrapper = wrappers[ 0 ];
-			const body1Element = body1._bodyCollectionContainer;
-			const body2Element = body2._bodyCollectionContainer;
+			const body1Element = body1.bodyCollectionContainer;
+			const body2Element = body2.bodyCollectionContainer;
 
 			expect( body1Element.parentNode ).to.equal( wrapper );
 			expect( body1Element.childNodes.length ).to.equal( 1 );

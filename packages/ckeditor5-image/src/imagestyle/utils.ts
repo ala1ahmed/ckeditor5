@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,20 +7,12 @@
  * @module image/imagestyle/utils
  */
 
-import { type Editor, icons, type PluginCollection } from 'ckeditor5/src/core';
-import { logWarning } from 'ckeditor5/src/utils';
-import type { ImageStyleConfig, ImageStyleOptionDefinition } from '../imagestyle';
-import type { ImageStyleDropdownDefinition } from './imagestyleui';
-
-const {
-	objectFullWidth,
-	objectInline,
-	objectLeft,	objectRight, objectCenter,
-	objectBlockLeft, objectBlockRight
-} = icons;
+import { type Editor, icons, type PluginCollection } from 'ckeditor5/src/core.js';
+import { logWarning } from 'ckeditor5/src/utils.js';
+import type { ImageStyleConfig, ImageStyleDropdownDefinition, ImageStyleOptionDefinition } from '../imageconfig.js';
 
 /**
- * Default image style options provided by the plugin that can be referred in the {@link module:image/image~ImageConfig#styles}
+ * Default image style options provided by the plugin that can be referred in the {@link module:image/imageconfig~ImageConfig#styles}
  * configuration.
  *
  * There are available 5 styles focused on formatting:
@@ -37,13 +29,13 @@ const {
  * * **`'block'`** is a block image without any CSS class,
  * * **`'side'`** is a block image styled with the `image-style-side` CSS class.
  */
-const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
+export const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 	// This style represents an image placed in the line of text.
 	get inline() {
 		return {
 			name: 'inline',
 			title: 'In line',
-			icon: objectInline,
+			icon: icons.objectInline,
 			modelElements: [ 'imageInline' ],
 			isDefault: true
 		};
@@ -54,7 +46,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'alignLeft',
 			title: 'Left aligned image',
-			icon: objectLeft,
+			icon: icons.objectLeft,
 			modelElements: [ 'imageBlock', 'imageInline' ],
 			className: 'image-style-align-left'
 		};
@@ -65,7 +57,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'alignBlockLeft',
 			title: 'Left aligned image',
-			icon: objectBlockLeft,
+			icon: icons.objectBlockLeft,
 			modelElements: [ 'imageBlock' ],
 			className: 'image-style-block-align-left'
 		};
@@ -76,7 +68,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'alignCenter',
 			title: 'Centered image',
-			icon: objectCenter,
+			icon: icons.objectCenter,
 			modelElements: [ 'imageBlock' ],
 			className: 'image-style-align-center'
 		};
@@ -87,7 +79,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'alignRight',
 			title: 'Right aligned image',
-			icon: objectRight,
+			icon: icons.objectRight,
 			modelElements: [ 'imageBlock', 'imageInline' ],
 			className: 'image-style-align-right'
 		};
@@ -98,7 +90,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'alignBlockRight',
 			title: 'Right aligned image',
-			icon: objectBlockRight,
+			icon: icons.objectBlockRight,
 			modelElements: [ 'imageBlock' ],
 			className: 'image-style-block-align-right'
 		};
@@ -109,7 +101,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'block',
 			title: 'Centered image',
-			icon: objectCenter,
+			icon: icons.objectCenter,
 			modelElements: [ 'imageBlock' ],
 			isDefault: true
 		};
@@ -120,7 +112,7 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 		return {
 			name: 'side',
 			title: 'Side image',
-			icon: objectRight,
+			icon: icons.objectRight,
 			modelElements: [ 'imageBlock' ],
 			className: 'image-style-side'
 		};
@@ -128,26 +120,26 @@ const DEFAULT_OPTIONS: Record<string, ImageStyleOptionDefinition> = {
 };
 
 /**
- * Default image style icons provided by the plugin that can be referred in the {@link module:image/image~ImageConfig#styles}
+ * Default image style icons provided by the plugin that can be referred in the {@link module:image/imageconfig~ImageConfig#styles}
  * configuration.
  *
- * See {@link module:image/imagestyle~ImageStyleOptionDefinition#icon} to learn more.
+ * See {@link module:image/imageconfig~ImageStyleOptionDefinition#icon} to learn more.
  *
  * There are 7 default icons available: `'full'`, `'left'`, `'inlineLeft'`, `'center'`, `'right'`, `'inlineRight'`, and `'inline'`.
  */
-const DEFAULT_ICONS: Record<string, string> = {
-	full: objectFullWidth,
-	left: objectBlockLeft,
-	right: objectBlockRight,
-	center: objectCenter,
-	inlineLeft: objectLeft,
-	inlineRight: objectRight,
-	inline: objectInline
-};
+export const DEFAULT_ICONS: Record<string, string> = /* #__PURE__ */ ( () => ( {
+	full: icons.objectFullWidth,
+	left: icons.objectBlockLeft,
+	right: icons.objectBlockRight,
+	center: icons.objectCenter,
+	inlineLeft: icons.objectLeft,
+	inlineRight: icons.objectRight,
+	inline: icons.objectInline
+} ) )();
 
 /**
- * Default drop-downs provided by the plugin that can be referred in the {@link module:image/image~ImageConfig#toolbar}
- * configuration. The drop-downs are containers for the {@link module:image/imagestyle~ImageStyleConfig#options image style options}.
+ * Default drop-downs provided by the plugin that can be referred in the {@link module:image/imageconfig~ImageConfig#toolbar}
+ * configuration. The drop-downs are containers for the {@link module:image/imageconfig~ImageStyleConfig#options image style options}.
  *
  * If both of the `ImageEditing` plugins are loaded, there are 2 predefined drop-downs available:
  *
@@ -156,7 +148,7 @@ const DEFAULT_ICONS: Record<string, string> = {
  * * **`'imageStyle:breakText'`**, which contains the `alignBlockLeft`, `alignCenter` and `alignBlockRight` options, that is,
  * those that breaks the text around the image.
  */
-const DEFAULT_DROPDOWN_DEFINITIONS: Array<ImageStyleDropdownDefinition> = [ {
+export const DEFAULT_DROPDOWN_DEFINITIONS: Array<ImageStyleDropdownDefinition> = [ {
 	name: 'imageStyle:wrapText',
 	title: 'Wrap text',
 	defaultItem: 'imageStyle:alignLeft',
@@ -177,7 +169,7 @@ const DEFAULT_DROPDOWN_DEFINITIONS: Array<ImageStyleDropdownDefinition> = [ {
  * @param config.isBlockPluginLoaded
  * Determines whether the {@link module:image/image/imageinlineediting~ImageInlineEditing `ImageInlineEditing`} plugin has been loaded.
  * @param config.configuredStyles
- * The image styles configuration provided in the image styles {@link module:image/image~ImageConfig#styles configuration}
+ * The image styles configuration provided in the image styles {@link module:image/imageconfig~ImageConfig#styles configuration}
  * as a default or custom value.
  * @returns
  * * Each of options contains a complete icon markup.
@@ -209,7 +201,7 @@ function normalizeStyles( config: {
  *
  * @returns
  * It returns an object with the lists of the image style options and groups defined as strings related to the
- * {@link module:image/imagestyle/utils~DEFAULT_OPTIONS default options}
+ * {@link module:image/imagestyle/utils#DEFAULT_OPTIONS default options}
  */
 function getDefaultStylesConfiguration( isBlockPluginLoaded: boolean, isInlinePluginLoaded: boolean ): ImageStyleConfig {
 	if ( isBlockPluginLoaded && isInlinePluginLoaded ) {
@@ -245,8 +237,8 @@ function getDefaultDropdownDefinitions( pluginCollection: PluginCollection<Edito
 }
 
 /**
- * Normalizes an image style option or group provided in the {@link module:image/image~ImageConfig#styles}
- * and returns it in a {@link module:image/imagestyle~ImageStyleOptionDefinition}/
+ * Normalizes an image style option or group provided in the {@link module:image/imageconfig~ImageConfig#styles}
+ * and returns it in a {@link module:image/imageconfig~ImageStyleOptionDefinition}/
  */
 function normalizeDefinition( definition: string | Partial<ImageStyleOptionDefinition> & { name: string } ): ImageStyleOptionDefinition {
 	if ( typeof definition === 'string' ) {
@@ -300,11 +292,11 @@ function isValidOption(
 		// Check if the option is supported by any of the loaded plugins.
 		if ( !modelElements.some( elementName => supportedElements.includes( elementName ) ) ) {
 			/**
-			 * In order to work correctly, each image style {@link module:image/imagestyle~ImageStyleOptionDefinition option}
+			 * In order to work correctly, each image style {@link module:image/imageconfig~ImageStyleOptionDefinition option}
 			 * requires specific model elements (also: types of images) to be supported by the editor.
 			 *
 			 * Model element names to which the image style option can be applied are defined in the
-			 * {@link module:image/imagestyle~ImageStyleOptionDefinition#modelElements} property of the style option
+			 * {@link module:image/imageconfig~ImageStyleOptionDefinition#modelElements} property of the style option
 			 * definition.
 			 *
 			 * Explore the warning in the console to find out precisely which option is not supported and which editor plugins
@@ -351,8 +343,8 @@ function warnInvalidStyle( info: object ): void {
 	 *
 	 * Please make sure the definition implements properly one of the following:
 	 *
-	 * * {@link module:image/imagestyle~ImageStyleOptionDefinition image style option definition},
-	 * * {@link module:image/imagestyle/imagestyleui~ImageStyleDropdownDefinition image style dropdown definition}
+	 * * {@link module:image/imageconfig~ImageStyleOptionDefinition image style option definition},
+	 * * {@link module:image/imageconfig~ImageStyleDropdownDefinition image style dropdown definition}
 	 *
 	 * @error image-style-configuration-definition-invalid
 	 * @param {String} [dropdown] The name of the invalid drop-down

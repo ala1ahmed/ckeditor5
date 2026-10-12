@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,13 @@
  * @module image/imageresize/imageresizehandles
  */
 
-import type { Element, ViewContainerElement, ViewElement } from 'ckeditor5/src/engine';
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
-import { WidgetResize } from 'ckeditor5/src/widget';
+import type { Element, ViewElement } from 'ckeditor5/src/engine.js';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { WidgetResize } from 'ckeditor5/src/widget.js';
+import ImageUtils from '../imageutils.js';
 
-import ImageLoadObserver, { type ImageLoadedEvent } from '../image/imageloadobserver';
+import ImageLoadObserver, { type ImageLoadedEvent } from '../image/imageloadobserver.js';
+import type ResizeImageCommand from './resizeimagecommand.js';
 
 const RESIZABLE_IMAGES_CSS_SELECTOR =
 	'figure.image.ck-widget > img,' +
@@ -20,8 +22,6 @@ const RESIZABLE_IMAGES_CSS_SELECTOR =
 	'figure.image.ck-widget > a > picture > img,' +
 	'span.image-inline.ck-widget > img,' +
 	'span.image-inline.ck-widget > picture > img';
-
-const IMAGE_WIDGETS_CLASSES_MATCH_REGEXP = /(image|image-inline)/;
 
 const RESIZED_IMAGE_CLASS = 'image_resized';
 
@@ -35,22 +35,29 @@ export default class ImageResizeHandles extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ WidgetResize ];
+	public static get requires() {
+		return [ WidgetResize, ImageUtils ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageResizeHandles' {
-		return 'ImageResizeHandles';
+	public static get pluginName() {
+		return 'ImageResizeHandles' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
 	public init(): void {
-		const command = this.editor.commands.get( 'resizeImage' )!;
+		const command: ResizeImageCommand = this.editor.commands.get( 'resizeImage' )!;
 		this.bind( 'isEnabled' ).to( command );
 
 		this._setupResizerCreator();
@@ -62,6 +69,7 @@ export default class ImageResizeHandles extends Plugin {
 	private _setupResizerCreator(): void {
 		const editor = this.editor;
 		const editingView = editor.editing.view;
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 
 		editingView.addObserver( ImageLoadObserver );
 
@@ -73,7 +81,7 @@ export default class ImageResizeHandles extends Plugin {
 
 			const domConverter = editor.editing.view.domConverter;
 			const imageView = domConverter.domToView( domEvent.target as HTMLElement ) as ViewElement;
-			const widgetView = imageView.findAncestor( { classes: IMAGE_WIDGETS_CLASSES_MATCH_REGEXP } ) as ViewContainerElement;
+			const widgetView = imageUtils.getImageWidgetFromImageView( imageView )!;
 			let resizer = this.editor.plugins.get( WidgetResize ).getResizerByViewElement( widgetView );
 
 			if ( resizer ) {
@@ -100,14 +108,13 @@ export default class ImageResizeHandles extends Plugin {
 						return domWidgetElement.querySelector( 'img' )!;
 					},
 					getResizeHost() {
-						// Return the model image element parent to avoid setting an inline element (<a>/<span>) as a resize host.
-						return domConverter.mapViewToDom( mapper.toViewElement( imageModel.parent as Element )! ) as HTMLElement;
+						return domConverter.mapViewToDom( mapper.toViewElement( imageModel as Element )! ) as HTMLElement;
 					},
-					// TODO consider other positions.
+
 					isCentered() {
 						const imageStyle = imageModel.getAttribute( 'imageStyle' );
 
-						return !imageStyle || imageStyle == 'block' || imageStyle == 'alignCenter';
+						return imageStyle == 'alignCenter';
 					},
 
 					onCommit( newValue ) {
@@ -127,6 +134,14 @@ export default class ImageResizeHandles extends Plugin {
 				if ( !widgetView.hasClass( RESIZED_IMAGE_CLASS ) ) {
 					editingView.change( writer => {
 						writer.addClass( RESIZED_IMAGE_CLASS, widgetView );
+					} );
+				}
+
+				const target = imageModel.name === 'imageInline' ? imageView : widgetView;
+
+				if ( target.getStyle( 'height' ) ) {
+					editingView.change( writer => {
+						writer.removeStyle( 'height', target );
 					} );
 				}
 			} );

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,22 +7,22 @@
  * @module engine/view/documentselection
  */
 
-import TypeCheckable from './typecheckable';
+import TypeCheckable from './typecheckable.js';
 import Selection, {
 	type PlaceOrOffset,
 	type Selectable,
 	type SelectionOptions,
 	type ViewSelectionChangeEvent
-} from './selection';
+} from './selection.js';
 
 import { EmitterMixin } from '@ckeditor/ckeditor5-utils';
 
-import type EditableElement from './editableelement';
-import type Element from './element';
-import type Node from './node';
-import type Item from './item';
-import type { default as Position, PositionOffset } from './position';
-import type Range from './range';
+import type EditableElement from './editableelement.js';
+import type Element from './element.js';
+import type Node from './node.js';
+import type Item from './item.js';
+import type { default as Position, PositionOffset } from './position.js';
+import type Range from './range.js';
 
 /**
  * Class representing the document selection in the view.
@@ -34,14 +34,53 @@ import type Range from './range';
  * the {@link module:engine/view/view~View#change `View#change()`} block
  * (so via {@link module:engine/view/downcastwriter~DowncastWriter#setSelection `DowncastWriter#setSelection()`}).
  */
-export default class DocumentSelection extends EmitterMixin( TypeCheckable ) {
+export default class DocumentSelection extends /* #__PURE__ */ EmitterMixin( TypeCheckable ) {
 	/**
 	 * Selection is used internally (`DocumentSelection` is a proxy to that selection).
 	 */
 	private readonly _selection: Selection;
 
+	/**
+	 * Creates new DocumentSelection instance.
+	 *
+	 * ```ts
+	 * // Creates collapsed selection at the position of given item and offset.
+	 * const paragraph = writer.createContainerElement( 'paragraph' );
+	 * const selection = new DocumentSelection( paragraph, offset );
+	 *
+	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
+	 * // first child of that element and ends after the last child of that element.
+	 * const selection = new DocumentSelection( paragraph, 'in' );
+	 *
+	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
+	 * // just after the item.
+	 * const selection = new DocumentSelection( paragraph, 'on' );
+	 * ```
+	 *
+	 * `Selection`'s constructor allow passing additional options (`backward`, `fake` and `label`) as the last argument.
+	 *
+	 * ```ts
+	 * // Creates backward selection.
+	 * const selection = new DocumentSelection( element, 'in', { backward: true } );
+	 * ```
+	 *
+	 * Fake selection does not render as browser native selection over selected elements and is hidden to the user.
+	 * This way, no native selection UI artifacts are displayed to the user and selection over elements can be
+	 * represented in other way, for example by applying proper CSS class.
+	 *
+	 * Additionally fake's selection label can be provided. It will be used to describe fake selection in DOM
+	 * (and be  properly handled by screen readers).
+	 *
+	 * ```ts
+	 * // Creates fake selection with label.
+	 * const selection = new DocumentSelection( element, 'in', { fake: true, label: 'foo' } );
+	 * ```
+	 *
+	 * See also: {@link #constructor:SELECTABLE `constructor( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public constructor( selectable: Node, placeOrOffset: PlaceOrOffset, options?: SelectionOptions );
-	public constructor( selectable?: Exclude<Selectable, Node>, options?: SelectionOptions );
 
 	/**
 	 * Creates new DocumentSelection instance.
@@ -65,18 +104,6 @@ export default class DocumentSelection extends EmitterMixin( TypeCheckable ) {
 	 * // Creates selection at the given position.
 	 * const position = writer.createPositionAt( root, offset );
 	 * const selection = new DocumentSelection( position );
-	 *
-	 * // Creates collapsed selection at the position of given item and offset.
-	 * const paragraph = writer.createContainerElement( 'paragraph' );
-	 * const selection = new DocumentSelection( paragraph, offset );
-	 *
-	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
-	 * // first child of that element and ends after the last child of that element.
-	 * const selection = new DocumentSelection( paragraph, 'in' );
-	 *
-	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
-	 * // just after the item.
-	 * const selection = new DocumentSelection( paragraph, 'on' );
 	 * ```
 	 *
 	 * `Selection`'s constructor allow passing additional options (`backward`, `fake` and `label`) as the last argument.
@@ -97,7 +124,13 @@ export default class DocumentSelection extends EmitterMixin( TypeCheckable ) {
 	 * // Creates fake selection with label.
 	 * const selection = new DocumentSelection( range, { fake: true, label: 'foo' } );
 	 * ```
+	 *
+	 * See also: {@link #constructor:NODE_OFFSET `constructor( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public constructor( selectable?: Exclude<Selectable, Node>, options?: SelectionOptions );
+
 	constructor( ...args: ConstructorParameters<typeof Selection> ) {
 		super();
 
@@ -360,6 +393,6 @@ DocumentSelection.prototype.is = function( type: string ): boolean {
 /**
  * Fired whenever selection ranges are changed through {@link ~DocumentSelection Selection API}.
  *
- * @eventName change
+ * @eventName ~DocumentSelection#change
  */
 export type ViewDocumentSelectionChangeEvent = ViewSelectionChangeEvent;

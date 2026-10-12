@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,16 +7,17 @@
  * @module clipboard/clipboard
  */
 
-import { Plugin, type PluginDependencies } from '@ckeditor/ckeditor5-core';
+import { Plugin } from '@ckeditor/ckeditor5-core';
 
-import ClipboardPipeline from './clipboardpipeline';
-import DragDrop from './dragdrop';
-import PastePlainText from './pasteplaintext';
+import ClipboardPipeline from './clipboardpipeline.js';
+import DragDrop from './dragdrop.js';
+import PastePlainText from './pasteplaintext.js';
+import ClipboardMarkersUtils from './clipboardmarkersutils.js';
 
 /**
  * The clipboard feature.
  *
- * Read more about the clipboard integration in the {@glink framework/guides/deep-dive/clipboard clipboard deep-dive} guide.
+ * Read more about the clipboard integration in the {@glink framework/deep-dive/clipboard clipboard deep-dive} guide.
  *
  * This is a "glue" plugin which loads the following plugins:
  * * {@link module:clipboard/clipboardpipeline~ClipboardPipeline}
@@ -27,20 +28,47 @@ export default class Clipboard extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'Clipboard' {
-		return 'Clipboard';
+	public static get pluginName() {
+		return 'Clipboard' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ClipboardPipeline, DragDrop, PastePlainText ];
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
-}
 
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ Clipboard.pluginName ]: Clipboard;
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ ClipboardMarkersUtils, ClipboardPipeline, DragDrop, PastePlainText ] as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public init(): void {
+		const editor = this.editor;
+		const t = this.editor.t;
+
+		// Add the information about the keystrokes to the accessibility database.
+		editor.accessibility.addKeystrokeInfos( {
+			keystrokes: [
+				{
+					label: t( 'Copy selected content' ),
+					keystroke: 'CTRL+C'
+				},
+				{
+					label: t( 'Paste content' ),
+					keystroke: 'CTRL+V'
+				},
+				{
+					label: t( 'Paste content as plain text' ),
+					keystroke: 'CTRL+SHIFT+V'
+				}
+			]
+		} );
 	}
 }

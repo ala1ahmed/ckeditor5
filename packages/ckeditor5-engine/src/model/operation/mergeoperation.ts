@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,15 @@
  * @module engine/model/operation/mergeoperation
  */
 
-import Operation from './operation';
-import SplitOperation from './splitoperation';
-import Position from '../position';
-import Range from '../range';
-import { _move } from './utils';
+import Operation from './operation.js';
+import SplitOperation from './splitoperation.js';
+import Position from '../position.js';
+import Range from '../range.js';
+import { _move } from './utils.js';
 
-import type Document from '../document';
-import type Element from '../element';
+import type Document from '../document.js';
+import type Element from '../element.js';
+import type { Selectable } from '../selection.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
 
@@ -28,7 +29,7 @@ import { CKEditorError } from '@ckeditor/ckeditor5-utils';
  */
 export default class MergeOperation extends Operation {
 	/**
-	 * Position inside the merged element. All nodes from that element after that position will be moved to {@link ~#targetPosition}.
+	 * Position inside the merged element. All nodes from that element after that position will be moved to {@link #targetPosition}.
 	 */
 	public sourcePosition: Position;
 
@@ -51,7 +52,7 @@ export default class MergeOperation extends Operation {
 	 * Creates a merge operation.
 	 *
 	 * @param sourcePosition Position inside the merged element. All nodes from that
-	 * element after that position will be moved to {@link ~#targetPosition}.
+	 * element after that position will be moved to {@link #targetPosition}.
 	 * @param howMany Summary offset size of nodes which will be moved from the merged element to the new parent.
 	 * @param targetPosition Position which the nodes from the merged elements will be moved to.
 	 * @param graveyardPosition Position in graveyard to which the merged element will be moved.
@@ -102,6 +103,21 @@ export default class MergeOperation extends Operation {
 		const end = this.sourcePosition.getShiftedBy( Number.POSITIVE_INFINITY );
 
 		return new Range( this.sourcePosition, end );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		const mergedElement = this.sourcePosition.parent as Element;
+
+		return [
+			Range._createOn( mergedElement ),
+
+			// These could be positions but `Selectable` type only supports `Iterable<Range>`.
+			Range._createFromPositionAndShift( this.targetPosition, 0 ),
+			Range._createFromPositionAndShift( this.graveyardPosition, 0 )
+		];
 	}
 
 	/**
@@ -192,7 +208,7 @@ export default class MergeOperation extends Operation {
 	}
 
 	/**
-	 * Creates `MergeOperation` object from deserilized object, i.e. from parsed JSON string.
+	 * Creates `MergeOperation` object from deserialized object, i.e. from parsed JSON string.
 	 *
 	 * @param json Deserialized JSON object.
 	 * @param document Document on which this operation will be applied.
@@ -205,9 +221,9 @@ export default class MergeOperation extends Operation {
 		return new this( sourcePosition, json.howMany, targetPosition, graveyardPosition, json.baseVersion );
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `MergeOperation( ${ this.baseVersion } ): ` +
-	// @if CK_DEBUG_ENGINE //		`${ this.sourcePosition } -> ${ this.targetPosition }` +
-	// @if CK_DEBUG_ENGINE //		` ( ${ this.howMany } ), ${ this.graveyardPosition }`;
+	// @if CK_DEBUG_ENGINE // 		`${ this.sourcePosition } -> ${ this.targetPosition }` +
+	// @if CK_DEBUG_ENGINE // 		` ( ${ this.howMany } ), ${ this.graveyardPosition }`;
 	// @if CK_DEBUG_ENGINE // }
 }

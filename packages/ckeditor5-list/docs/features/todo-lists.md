@@ -1,113 +1,71 @@
 ---
 menu-title: To-do lists
+meta-title: To-do lists | CKEditor 5 Documentation
 category: features-lists
 order: 20
 ---
 
 # To-do lists
 
-The to-do list feature lets you create a list of interactive checkboxes with labels. It supports all features of regular lists so you can nest a to-do list together with {@link features/lists bulleted and numbered lists} in any combination.
-
-To-do lists can be introduced using the dedicated toolbar button. Thanks to the integration with the {@link features/autoformat autoformatting feature}, they can also be added with Markdown code. Simply start a line with `[ ]` or `[x]` followed by a space to insert an unchecked or checked list item, respectively.
-
-After reading this guide, you may find additional interesting details and examples in the [Lists in CKEditor 5](https://ckeditor.com/blog/Feature-of-the-month-Lists-in-CKEditor-5/) blog post.
-
-<info-box info>
-	The To-do list feature is enabled by default in the {@link installation/getting-started/predefined-builds#superbuild superbuild} only. See the [installation](#installation) section to learn how to enable it in your editor.
-</info-box>
+The to-do list feature lets you create a list of interactive checkboxes with labels. It supports all features of {@link features/lists bulleted and numbered lists}, so you can nest a to-do list together with any combination of other lists.
 
 ## Demo
 
-Use the Insert to-do list toolbar button {@icon @ckeditor/ckeditor5-list/theme/icons/todolist.svg Insert a to-do list} to add a list to the editor content.
+Use the to-do list toolbar button {@icon @ckeditor/ckeditor5-core/theme/icons/todolist.svg To-do list} to add a list to the editor content. Thanks to the integration with the {@link features/autoformat autoformatting feature}, you can also start a line with `[ ]` or `[x]` followed by a space to insert an unchecked or checked list item.
 
 {@snippet features/todo-list}
 
 <info-box info>
-	This demo only presents a limited set of features. Visit the {@link examples/builds/full-featured-editor full-featured editor example} to see more in action.
+	This demo presents a limited set of features. Visit the {@link examples/builds/full-featured-editor feature-rich editor example} to see more in action.
 </info-box>
 
 ## Keyboard support
 
-You can check and uncheck a list item by using the <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (<kbd>Cmd</kbd> + <kbd>Enter</kbd> on Mac) shortcut when the selection is in that item.
+You can check and clear a list item by using the <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (<kbd>Cmd</kbd> + <kbd>Enter</kbd> on Mac) shortcut when the selection is in that item.
 
 ## Installation
 
-To add this feature to your editor, install the [`@ckeditor/ckeditor5-list`](https://www.npmjs.com/package/@ckeditor/ckeditor5-list) package:
+<info-box info>
+	⚠️ **New import paths**
 
-```bash
-npm install --save @ckeditor/ckeditor5-list
-```
+	Starting with {@link updating/update-to-42 version 42.0.0}, we changed the format of import paths. This guide uses the new, shorter format. Refer to the {@link getting-started/legacy-getting-started/legacy-imports Packages in the legacy setup} guide if you use an older version of CKEditor&nbsp;5.
+</info-box>
 
-Then add the `TodoList` plugin to your plugin list and the toolbar configuration:
+After {@link getting-started/integrations-cdn/quick-start installing the editor}, add the feature to your plugin list and toolbar configuration:
 
+<code-switcher>
 ```js
-import TodoList from '@ckeditor/ckeditor5-list/src/todolist';
+import { ClassicEditor, TodoList } from 'ckeditor5';
 
 ClassicEditor
 	.create( document.querySelector( '#editor' ), {
+		licenseKey: '<YOUR_LICENSE_KEY>', // Or 'GPL'.
 		plugins: [ TodoList, /* ... */ ],
 		toolbar: [ 'todoList', /* ... */ ],
+		list: {
+			// Configuration.
+		}
 	} )
 	.then( /* ... */ )
 	.catch( /* ... */ );
 ```
+</code-switcher>
 
-<info-box info>
-	Read more about {@link installation/getting-started/installing-plugins installing plugins}.
-</info-box>
+## Related features
 
-## HTML structure
+These CKEditor&nbsp;5 features provide similar functionality:
+* {@link features/lists Ordered and unordered lists} &ndash; Create ordered and unordered lists with configurable markers.
+* {@link features/multi-level-lists Multi-level lists} &ndash; Multi-level lists allow the user to set different markers (symbols, text or numbers) to display at each level of the list.
+* {@link features/autoformat Autoformatting} &ndash; Format the text on the go with Markdown code.
 
-When you call {@link module:core/editor/utils/dataapimixin~DataApi#function-getData `editor.getData()`}, a to-do list will be represented as the following HTML:
+## Common API
 
-```html
-<ul class="todo-list">
-	<li>
-		<label class="todo-list__label">
-			<input type="checkbox" disabled [checked] />
-			<span class="todo-list__label__description">Foo</span>
-		</label>
-	</li>
-</ul>
-```
+The {@link module:list/todolist~TodoList} plugin registers:
 
-For nested lists:
-
-```html
-<ul class="todo-list">
-	<li>
-		<label class="todo-list__label">
-			<input type="checkbox" disabled [checked] />
-			<span class="todo-list__label__description">Foo</span>
-		</label>
-		<ul class="todo-list">
-			<li>
-				<label class="todo-list__label">
-					<input type="checkbox" disabled [checked] />
-					<span class="todo-list__label__description">Bar</span>
-				</label>
-			</li>
-		</ul>
-	</li>
-</ul>
-```
-
-### Model representation
-
-From the technical point of view, to-do lists are built on top of the {@link module:list/list~List list feature}. In the CKEditor 5 data model they are represented as a special `listType`, with an optional `todoListChecked` attribute:
-
-```html
-<listItem listType="todo">Foo</listItem>
-```
-
-```html
-<listItem listType="todo" todoListChecked="true">Bar</listItem>
-```
-
-## Ordered and unordered lists
-
-You can read more about these features in the {@link features/lists lists feature guide}.
+* The {@link module:list/list/listcommand~ListCommand `'todoList'`} command.
+* The {@link module:list/todolist/checktodolistcommand~CheckTodoListCommand `'checkTodoList'`} command.
+* The `'todoList'` UI button.
 
 ## Contribute
 
-The source code of the feature is available on GitHub in [https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-list](https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-list).
+The source code of the feature is available on GitHub at [https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-list](https://github.com/ckeditor/ckeditor5/tree/master/packages/ckeditor5-list).

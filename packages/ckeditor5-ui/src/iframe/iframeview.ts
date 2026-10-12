@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,7 +7,8 @@
  * @module ui/iframe/iframeview
  */
 
-import View from '../view';
+import View from '../view.js';
+
 import type { Locale } from '@ckeditor/ckeditor5-utils';
 
 /**
@@ -30,7 +31,7 @@ export default class IframeView extends View<HTMLIFrameElement> {
 	/**
 	 * Creates a new instance of the iframe view.
 	 *
-	 * @param {module:utils/locale~Locale} [locale] The locale instance.
+	 * @param locale The locale instance.
 	 */
 	constructor( locale?: Locale ) {
 		super( locale );
@@ -58,7 +59,7 @@ export default class IframeView extends View<HTMLIFrameElement> {
 	 * Renders the iframe's {@link #element} and returns a `Promise` for asynchronous
 	 * child `contentDocument` loading process.
 	 *
-	 * @returns {Promise} A promise which resolves once the iframe `contentDocument` has
+	 * @returns A promise which resolves once the iframe `contentDocument` has
 	 * been {@link #event:loaded}.
 	 */
 	public override render(): Promise<unknown> {
@@ -73,9 +74,8 @@ export default class IframeView extends View<HTMLIFrameElement> {
 /**
  * Fired when the DOM iframe's `contentDocument` finished loading.
  *
- * @event loaded
+ * @eventName ~IframeView#loaded
  */
-
 export type IframeViewLoadedEvent = {
 	name: 'loaded';
 	args: [];

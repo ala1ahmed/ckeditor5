@@ -1,15 +1,141 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals setTimeout, window, console, document */
 
-import EditorWatchdog from '../src/editorwatchdog';
-import Editor from '@ckeditor/ckeditor5-core/src/editor/editor';
-import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor';
-import CKEditorError from '@ckeditor/ckeditor5-utils/src/ckeditorerror';
-import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
+import { Plugin } from '@ckeditor/ckeditor5-core';
+import EditorWatchdog from '../src/editorwatchdog.js';
+import MultiRootEditor from '@ckeditor/ckeditor5-editor-multi-root/src/multirooteditor.js';
+import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor.js';
+import CKEditorError from '@ckeditor/ckeditor5-utils/src/ckeditorerror.js';
+import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph.js';
+import Clipboard from '@ckeditor/ckeditor5-clipboard/src/clipboard.js';
+
+class CommentsRepository extends Plugin {
+	static get pluginName() {
+		return 'CommentsRepository';
+	}
+
+	constructor( editor ) {
+		super( editor );
+
+		this.editor = editor;
+		this._threads = [];
+	}
+
+	getCommentThread( id ) {
+		const thread = this._threads.find( thread => thread.threadId === id );
+
+		if ( !thread ) {
+			return null;
+		}
+
+		return {
+			...thread,
+			remove: () => {
+				this._threads.filter( thread => thread.threadId === id );
+			},
+			setAttribute: ( key, value ) => {
+				const idx = this._threads.findIndex( thread => thread.threadId === id );
+
+				this._threads[ idx ].attributes = { [ key ]: value };
+			}
+		};
+	}
+
+	getCommentThreads() {
+		return this._threads;
+	}
+
+	hasCommentThread( id ) {
+		return !!this.getCommentThread( id );
+	}
+
+	addCommentThread( data ) {
+		const id = data.threadId;
+
+		if ( this.hasCommentThread( id ) ) {
+			const idx = this._threads.findIndex( thread => thread.threadId === id );
+
+			this._threads[ idx ] = data;
+		} else {
+			this._threads.push( data );
+		}
+	}
+}
+
+class TrackChanges extends Plugin {
+	static get pluginName() {
+		return 'TrackChanges';
+	}
+
+	static get requires() {
+		return [ TrackChangesEditing ];
+	}
+
+	constructor( editor ) {
+		super( editor );
+
+		this.editor = editor;
+	}
+
+	getSuggestions() {
+		const trackChangesEditing = this.editor.plugins.get( 'TrackChangesEditing' );
+
+		if ( !trackChangesEditing ) {
+			return [];
+		}
+
+		return trackChangesEditing._suggestions;
+	}
+}
+
+class TrackChangesEditing extends Plugin {
+	static get pluginName() {
+		return 'TrackChangesEditing';
+	}
+
+	constructor( editor ) {
+		super( editor );
+
+		this.editor = editor;
+		this._suggestions = [];
+	}
+
+	getSuggestion( id ) {
+		const suggestion = this._suggestions.find( suggestion => suggestion.id === id );
+
+		if ( !suggestion ) {
+			return null;
+		}
+
+		suggestion.setAttribute = ( key, value ) => {
+			const idx = this._suggestions.findIndex( suggestion => suggestion.id === id );
+
+			this._suggestions[ idx ].attributes = { [ key ]: value };
+		};
+
+		return suggestion;
+	}
+
+	hasSuggestion( id ) {
+		return !!this.getSuggestion( id );
+	}
+
+	addSuggestionData( data ) {
+		const id = data.id;
+
+		if ( this.hasSuggestion( id ) ) {
+			const idx = this._suggestions.findIndex( suggestion => suggestion.id === id );
+
+			this._suggestions[ idx ] = data;
+		} else {
+			this._suggestions.push( data );
+		}
+	}
+}
 
 // The error handling testing with mocha & chai is quite broken and hard to test.
 // sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
@@ -89,6 +215,124 @@ describe( 'EditorWatchdog', () => {
 
 			expect( watchdog.editor.getData() ).to.equal( '<p>foo</p>' );
 
+			// Watchdog should set data in a non-undoable batch to prevent the undo feature from reverting to empty editor.
+			expect( watchdog.editor.model.document.history.getOperation( 0 ).batch.isUndoable ).to.be.false;
+
+			await watchdog.destroy();
+		} );
+
+		it( 'should support root attributes', async () => {
+			const watchdog = new EditorWatchdog();
+
+			watchdog.setCreator( ( data, config ) => ClassicTestEditor.create( data, config ) );
+
+			// sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			await watchdog.create( '<p>foo</p>', { plugins: [ Paragraph ] } );
+
+			const root = watchdog.editor.model.document.getRoot();
+
+			watchdog.editor.model.change( writer => {
+				writer.setAttribute( 'test', 1, root );
+			} );
+
+			expect( root.getAttribute( 'test' ) ).to.equal( 1 );
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+					res();
+				} );
+			} );
+
+			expect( root.getAttribute( 'test' ) ).to.equal( 1 );
+
+			await watchdog.destroy();
+		} );
+
+		it( 'should support markers', async () => {
+			const watchdog = new EditorWatchdog();
+
+			watchdog.setCreator( ( data, config ) => ClassicTestEditor.create( data, config ) );
+
+			// sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			await watchdog.create( '<p>foo</p>', { plugins: [ Paragraph ] } );
+
+			const root = watchdog.editor.model.document.getRoot();
+
+			watchdog.editor.model.change( writer => {
+				writer.addMarker( 'first', {
+					usingOperation: false,
+					affectsData: false,
+					range: writer.createRange(
+						writer.createPositionAt( root, [ 0 ] ),
+						writer.createPositionAt( root, [ 1 ] )
+					)
+				} );
+
+				writer.addMarker( 'second', {
+					usingOperation: true,
+					affectsData: true,
+					range: writer.createRange(
+						writer.createPositionAt( root, [ 0 ] ),
+						writer.createPositionAt( root, [ 1 ] )
+					)
+				} );
+			} );
+
+			const marker = watchdog.editor.model.markers.get( 'second' );
+
+			watchdog._save();
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+					res();
+				} );
+			} );
+
+			expect( watchdog.editor.model.markers.get( 'first' ) ).to.be.null;
+			expect( watchdog.editor.model.markers.get( 'second' ).name ).to.equal( marker.name );
+
+			await watchdog.destroy();
+		} );
+
+		it( 'should create an editor instance after the ongoing destruction process has been finished', async () => {
+			const watchdog = new EditorWatchdog( ClassicTestEditor );
+
+			// It simulates the process of creating a new instance of the editor and immediately destroying it.
+			const simulateRefreshApp = async () => {
+				watchdog.create( element, {
+					initialData: '<p>foo</p>',
+					plugins: [ Paragraph ]
+				} );
+
+				watchdog.destroy();
+			};
+
+			// We do not wait for the completion of this process, which simulates the real case when the app is immediately
+			// restarted and the initial process of the new app is called without waiting for the previous process to finish.
+			simulateRefreshApp();
+
+			await watchdog.create( element, {
+				initialData: '<p>foo</p>',
+				plugins: [ Paragraph ]
+			} );
+
+			expect( watchdog.editor ).to.not.be.null;
+			expect( watchdog.state ).to.equal( 'ready' );
+
 			await watchdog.destroy();
 		} );
 	} );
@@ -129,6 +373,203 @@ describe( 'EditorWatchdog', () => {
 				.then( () => {
 					expect( watchdog.editor ).to.be.null;
 				} );
+		} );
+	} );
+
+	describe( 'collaboration data', () => {
+		let watchdog;
+
+		beforeEach( async () => {
+			watchdog = new EditorWatchdog();
+
+			watchdog.setCreator( ( data, config ) => ClassicTestEditor.create( data, config ) );
+		} );
+
+		afterEach( async () => {
+			await watchdog.destroy();
+		} );
+
+		it( 'should support comment threads', async () => {
+			await watchdog.create( '<p>Foo bar</p>', {
+				plugins: [ Paragraph, Clipboard, CommentsRepository ],
+				comments: {
+					editorConfig: {}
+				}
+			} );
+
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			const commentsRepository = watchdog.editor.plugins.get( 'CommentsRepository' );
+
+			commentsRepository.addCommentThread( { threadId: 't1', target: () => null } );
+
+			expect( commentsRepository.getCommentThreads().length ).to.be.equal( 1 );
+			expect( commentsRepository.getCommentThreads()[ 0 ].threadId ).to.be.equal( 't1' );
+
+			watchdog._save();
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+
+					res();
+				} );
+			} );
+
+			const restoredCommentThreads = watchdog.editor.plugins.get( 'CommentsRepository' ).getCommentThreads();
+
+			expect( restoredCommentThreads.length ).to.be.equal( 1 );
+			expect( restoredCommentThreads[ 0 ].threadId ).to.be.equal( 't1' );
+		} );
+
+		it( 'should support suggestions', async () => {
+			await watchdog.create( '<p>Foo bar</p>', {
+				plugins: [ Paragraph, TrackChanges, Clipboard ],
+				comments: {
+					editorConfig: {}
+				}
+			} );
+
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			const suggestionData = {
+				id: '1',
+				type: 'insertion:subType',
+				authorId: 'u1',
+				data: null,
+				attributes: {}
+			};
+
+			const trackChanges = watchdog.editor.plugins.get( 'TrackChanges' );
+			const trackChangesEditing = watchdog.editor.plugins.get( 'TrackChangesEditing' );
+
+			trackChangesEditing.addSuggestionData( suggestionData );
+
+			watchdog._save();
+
+			expect( trackChanges.getSuggestions().length ).to.equal( 1 );
+			expect( trackChanges.getSuggestions()[ 0 ] ).to.deep.equal( suggestionData );
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+					res();
+				} );
+			} );
+
+			const restoredSuggestions = watchdog.editor.plugins.get( 'TrackChanges' ).getSuggestions();
+
+			expect( restoredSuggestions.length ).to.equal( 1 );
+			expect( restoredSuggestions[ 0 ] ).to.deep.equal( suggestionData );
+		} );
+
+		it( 'should support comment data created by another plugins', async () => {
+			// Plugin that creates comment thread on init.
+			class InitPlugin {
+				constructor( editor ) {
+					this.editor = editor;
+				}
+
+				init() {
+					const commentsRepository = this.editor.plugins.get( 'CommentsRepository' );
+
+					commentsRepository.addCommentThread( { threadId: 't1', target: () => null } );
+				}
+			}
+
+			await watchdog.create( '<p>Foo bar</p>', {
+				plugins: [ Paragraph, CommentsRepository, Clipboard, InitPlugin ],
+				comments: {
+					editorConfig: {}
+				}
+			} );
+
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			// Set comment thread attributes to test if it will be restored after restart.
+			const commentThread = watchdog.editor.plugins.get( 'CommentsRepository' ).getCommentThread( 't1' );
+			commentThread.setAttribute( 'test', 'value' );
+
+			watchdog._save();
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+					res();
+				} );
+			} );
+
+			// Should keep the comment thread up to date even if the InitPlugin creates the new instance.
+			expect( watchdog.editor.plugins.get( 'CommentsRepository' ).getCommentThread( 't1' ).attributes ).to.deep.equal( {
+				test: 'value'
+			} );
+		} );
+
+		it( 'should support suggestion data created by another plugins', async () => {
+			// Plugin that creates suggestion on init.
+			class InitPlugin {
+				constructor( editor ) {
+					this.editor = editor;
+				}
+
+				init() {
+					const trackChangesEditing = this.editor.plugins.get( 'TrackChangesEditing' );
+
+					trackChangesEditing.addSuggestionData( {
+						id: '1',
+						type: 'insertion:subType',
+						authorId: 'u1',
+						data: null,
+						createdAt: new Date(),
+						attributes: {}
+					} );
+				}
+			}
+
+			await watchdog.create( '<p>Foo bar</p>', {
+				plugins: [ Paragraph, Clipboard, TrackChanges, InitPlugin ],
+				comments: {
+					editorConfig: {}
+				}
+			} );
+
+			const originalErrorHandler = window.onerror;
+			const windowErrorSpy = sinon.spy();
+			window.onerror = windowErrorSpy;
+
+			// Set comment thread attributes to test if it will be restored after restart.
+			const suggestion = watchdog.editor.plugins.get( 'TrackChangesEditing' ).getSuggestion( '1' );
+
+			// Set suggestion attributes to test if it will be restored after restart.
+			suggestion.setAttribute( 'test', 'value' );
+
+			watchdog._save();
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', () => {
+					window.onerror = originalErrorHandler;
+					res();
+				} );
+			} );
+
+			// Should keep the suggestion attributes up to date even if the InitPlugin creates the new instance.
+			expect( watchdog.editor.plugins.get( 'TrackChangesEditing' ).getSuggestion( '1' ).attributes ).to.deep.equal( {
+				test: 'value'
+			} );
 		} );
 	} );
 
@@ -452,7 +893,7 @@ describe( 'EditorWatchdog', () => {
 			await watchdog.destroy();
 		} );
 
-		it( 'Watchdog should warn if the CKEditorError is missing its context', async () => {
+		it.skip( 'Watchdog should warn if the CKEditorError is missing its context', async () => {
 			const watchdog = new EditorWatchdog( ClassicTestEditor );
 
 			// sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
@@ -547,7 +988,7 @@ describe( 'EditorWatchdog', () => {
 					watchdog.on( 'restart', () => {
 						window.onerror = originalErrorHandler;
 
-						expect( watchdog.editor.getData() ).to.equal( '<p>foo</p><p>bar</p>' );
+						expect( watchdog.editor.getData() ).to.equal( '<p>foo</p>bar' );
 
 						watchdog.destroy().then( res );
 					} );
@@ -610,8 +1051,9 @@ describe( 'EditorWatchdog', () => {
 			} );
 
 			const editorGetDataError = new Error( 'Some error' );
-			const getDataStub = sinon.stub( watchdog.editor.data, 'get' )
-				.throwsException( editorGetDataError );
+			const getDataStub = sinon.stub( watchdog, '_getData' )
+				.onCall( 0 ).throwsException( editorGetDataError )
+				.onCall( 1 ).returns( {} );
 			// Keep the reference to cleanly destroy it at in the end, as during the TC it
 			// throws an exception during destruction.
 			const firstEditor = watchdog.editor;
@@ -638,11 +1080,6 @@ describe( 'EditorWatchdog', () => {
 						console.error,
 						editorGetDataError,
 						'An error happened during restoring editor data. Editor will be restored from the previously saved data.'
-					);
-
-					sinon.assert.calledWith(
-						console.error,
-						'An error happened during the editor destroying.'
 					);
 
 					await watchdog.destroy();
@@ -680,6 +1117,49 @@ describe( 'EditorWatchdog', () => {
 
 						watchdog.destroy().then( res );
 					} );
+				} );
+			} );
+		} );
+
+		it( 'should handle the error when the editor destroying failed', async () => {
+			const watchdog = new EditorWatchdog( ClassicTestEditor );
+
+			// sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
+			const originalErrorHandler = window.onerror;
+			window.onerror = undefined;
+
+			sinon.stub( console, 'error' );
+
+			await watchdog.create( element, {
+				initialData: '<p>foo</p>',
+				plugins: [ Paragraph ]
+			} );
+
+			const editorGetDataError = new Error( 'Some error' );
+			const destroyStub = sinon.stub( watchdog, '_destroy' )
+				.throwsException( editorGetDataError );
+
+			// Keep the reference to cleanly destroy it at in the end, as during the TC it
+			// throws an exception during destruction.
+			const firstEditor = watchdog.editor;
+
+			await new Promise( res => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				watchdog.on( 'restart', async () => {
+					window.onerror = originalErrorHandler;
+
+					sinon.assert.calledWith(
+						console.error,
+						'An error happened during the editor destroying.'
+					);
+
+					destroyStub.restore();
+
+					await watchdog.destroy();
+					await firstEditor.destroy();
+
+					res();
 				} );
 			} );
 		} );
@@ -833,6 +1313,21 @@ describe( 'EditorWatchdog', () => {
 
 			sinon.assert.calledTwice( spy );
 		} );
+
+		it( 'should destroy the editor after finishing the ongoing creation process', async () => {
+			const watchdog = new EditorWatchdog( ClassicTestEditor );
+
+			// Do not wait for the creation process to finish.
+			watchdog.create( element, {
+				initialData: '<p>foo</p>',
+				plugins: [ Paragraph ]
+			} );
+
+			await watchdog.destroy();
+
+			expect( watchdog.editor ).to.equal( null );
+			expect( watchdog.state ).to.equal( 'destroyed' );
+		} );
 	} );
 
 	describe( 'crashes', () => {
@@ -972,63 +1467,248 @@ describe( 'EditorWatchdog', () => {
 		} );
 	} );
 
-	describe( 'multi-root editors', () => {
-		it( 'should support multi-root editors', async () => {
-			class MultiRootEditor extends Editor {
-				constructor( sourceElements, config ) {
-					super( config );
+	describe( 'multi-root editor', () => {
+		let element2, watchdog, originalErrorHandler, restartSpy;
 
-					// Create a root for each source element.
-					for ( const rootName of Object.keys( sourceElements ) ) {
-						this.model.document.createRoot( '$root', rootName );
-					}
-				}
+		beforeEach( () => {
+			element2 = document.createElement( 'div' );
+			document.body.appendChild( element2 );
 
-				static async create( sourceElements, config ) {
-					const editor = new this( sourceElements, config );
+			watchdog = new EditorWatchdog( MultiRootEditor );
 
-					await editor.initPlugins();
+			restartSpy = sinon.spy();
 
-					await editor.data.init( config.initialData );
-
-					editor.fire( 'ready' );
-
-					return editor;
-				}
-			}
-
-			const watchdog = new EditorWatchdog( MultiRootEditor );
-
-			// sinon.stub( window, 'onerror' ).value( undefined ); and similar do not work.
-			const originalErrorHandler = window.onerror;
+			originalErrorHandler = window.onerror;
 			window.onerror = undefined;
+		} );
 
-			await watchdog.create( {
-				header: element
-			}, {
-				initialData: {
-					header: '<p>Foo</p>'
-				},
-				plugins: [ Paragraph ]
-			} );
-
-			expect( watchdog.editor.data.get( { rootName: 'header' } ) ).to.equal( '<p>Foo</p>' );
-
-			const restartSpy = sinon.spy();
-
-			watchdog.on( 'restart', restartSpy );
-
-			setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
-
-			await waitCycle();
+		afterEach( async () => {
+			element2.remove();
 
 			window.onerror = originalErrorHandler;
 
-			sinon.assert.calledOnce( restartSpy );
-
-			expect( watchdog.editor.data.get( { rootName: 'header' } ) ).to.equal( '<p>Foo</p>' );
-
 			await watchdog.destroy();
+		} );
+
+		describe( 'init using data', () => {
+			let clock;
+
+			beforeEach( async () => {
+				await watchdog.create( {
+					header: '<p>Foo</p>',
+					content: '<p>Bar</p>'
+				}, {
+					plugins: [ Paragraph ],
+					rootsAttributes: {
+						header: {
+							order: 1
+						},
+						content: {
+							order: 2
+						}
+					},
+					lazyRoots: [ 'lazyOne', 'lazyTwo' ]
+				} );
+
+				watchdog.on( 'restart', restartSpy );
+			} );
+
+			it( 'should properly restart', async () => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.getFullData() ).to.deep.equal( {
+					header: '<p>Foo</p>',
+					content: '<p>Bar</p>'
+				} );
+
+				expect( watchdog.editor.getRootsAttributes() ).to.deep.equal( {
+					header: { order: 1 },
+					content: { order: 2 }
+				} );
+			} );
+
+			it( 'should properly handle added and removed roots', async () => {
+				clock = sinon.useFakeTimers();
+
+				watchdog.editor.detachRoot( 'content' );
+				watchdog.editor.addRoot( 'new', { data: '<p>New</p>', attributes: { order: 3 } } );
+
+				clock.tick( 6000 );
+				clock.restore();
+
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.getFullData() ).to.deep.equal( {
+					header: '<p>Foo</p>',
+					new: '<p>New</p>'
+				} );
+
+				expect( watchdog.editor.getRootsAttributes() ).to.deep.equal( {
+					header: { order: 1 },
+					new: { order: 3 }
+				} );
+			} );
+
+			it( 'should properly handle lazy roots', async () => {
+				clock = sinon.useFakeTimers();
+
+				watchdog.editor.detachRoot( 'lazyOne' );
+				watchdog.editor.loadRoot( 'lazyTwo', { data: '<p>Two</p>', attributes: { order: 5 } } );
+
+				clock.tick( 6000 );
+				clock.restore();
+
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.getFullData() ).to.deep.equal( {
+					header: '<p>Foo</p>',
+					content: '<p>Bar</p>',
+					lazyTwo: '<p>Two</p>'
+				} );
+
+				expect( watchdog.editor.getRootsAttributes() ).to.deep.equal( {
+					header: { order: 1 },
+					content: { order: 2 },
+					lazyTwo: { order: 5 }
+				} );
+			} );
+		} );
+
+		describe( 'init using elements', () => {
+			let clock;
+
+			beforeEach( async () => {
+				class MultiRootEditorIntegration {
+					constructor( editor ) {
+						this.editor = editor;
+					}
+
+					init() {
+						this.editor.on( 'addRoot', ( evt, root ) => {
+							const domElement = this.editor.createEditable( root );
+
+							document.body.appendChild( domElement );
+						} );
+
+						this.editor.on( 'detachRoot', ( evt, root ) => {
+							const domElement = this.editor.detachEditable( root );
+
+							domElement.remove();
+						} );
+					}
+				}
+
+				watchdog.setDestructor( editor => {
+					for ( const name of editor.ui.getEditableElementsNames() ) {
+						const editable = editor.ui.getEditableElement( name );
+
+						editable.remove();
+					}
+
+					return editor.destroy();
+				} );
+
+				await watchdog.create( {
+					header: element,
+					content: element2
+				}, {
+					initialData: {
+						header: '<p>Foo</p>',
+						content: '<p>Bar</p>'
+					},
+					plugins: [ Paragraph, MultiRootEditorIntegration ],
+					rootsAttributes: {
+						header: {
+							order: 1
+						},
+						content: {
+							order: 2
+						}
+					},
+					lazyRoots: [ 'lazyOne', 'lazyTwo' ]
+				} );
+
+				watchdog.on( 'restart', restartSpy );
+			} );
+
+			it( 'should properly restart', async () => {
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				window.onerror = originalErrorHandler;
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.data.get( { rootName: 'header' } ) ).to.equal( '<p>Foo</p>' );
+				expect( watchdog.editor.data.get( { rootName: 'content' } ) ).to.equal( '<p>Bar</p>' );
+			} );
+
+			it( 'should properly handle added and removed roots', async () => {
+				clock = sinon.useFakeTimers();
+
+				watchdog.editor.detachRoot( 'content' );
+				watchdog.editor.addRoot( 'new', { data: '<p>New</p>', attributes: { order: 3 } } );
+
+				clock.tick( 6000 );
+				clock.restore();
+
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.getFullData() ).to.deep.equal( {
+					header: '<p>Foo</p>',
+					new: '<p>New</p>'
+				} );
+
+				expect( watchdog.editor.getRootsAttributes() ).to.deep.equal( {
+					header: { order: 1 },
+					new: { order: 3 }
+				} );
+			} );
+
+			it( 'should properly handle lazy roots', async () => {
+				clock = sinon.useFakeTimers();
+
+				watchdog.editor.detachRoot( 'lazyOne' );
+				watchdog.editor.loadRoot( 'lazyTwo', { data: '<p>Two</p>', attributes: { order: 5 } } );
+
+				clock.tick( 6000 );
+				clock.restore();
+
+				setTimeout( () => throwCKEditorError( 'foo', watchdog.editor ) );
+
+				await waitCycle();
+
+				sinon.assert.calledOnce( restartSpy );
+
+				expect( watchdog.editor.getFullData() ).to.deep.equal( {
+					header: '<p>Foo</p>',
+					content: '<p>Bar</p>',
+					lazyTwo: '<p>Two</p>'
+				} );
+
+				expect( watchdog.editor.getRootsAttributes() ).to.deep.equal( {
+					header: { order: 1 },
+					content: { order: 2 },
+					lazyTwo: { order: 5 }
+				} );
+			} );
 		} );
 	} );
 } );

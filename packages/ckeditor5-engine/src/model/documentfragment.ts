@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,15 @@
  * @module engine/model/documentfragment
  */
 
-import TypeCheckable from './typecheckable';
-import Element from './element';
-import NodeList from './nodelist';
-import Text from './text';
-import TextProxy from './textproxy';
+import TypeCheckable from './typecheckable.js';
+import Element from './element.js';
+import NodeList from './nodelist.js';
+import Text from './text.js';
+import TextProxy from './textproxy.js';
 
-import type Item from './item';
-import type Node from './node';
-import type Range from './range';
+import type Item from './item.js';
+import type Node from './node.js';
+import type Range from './range.js';
 
 import { isIterable } from '@ckeditor/ckeditor5-utils';
 
@@ -133,6 +133,13 @@ export default class DocumentFragment extends TypeCheckable implements Iterable<
 	}
 
 	/**
+	 * Returns `false` as `DocumentFragment` by definition is not attached to a document. Added for compatibility reasons.
+	 */
+	public isAttached(): false {
+		return false;
+	}
+
+	/**
 	 * Returns empty array. Added for compatibility reasons.
 	 */
 	public getAncestors(): Array<never> {
@@ -142,11 +149,21 @@ export default class DocumentFragment extends TypeCheckable implements Iterable<
 	/**
 	 * Gets the child at the given index. Returns `null` if incorrect index was passed.
 	 *
-	 * @param index Index of child.
+	 * @param index Index in this document fragment.
 	 * @returns Child node.
 	 */
 	public getChild( index: number ): Node | null {
 		return this._children.getNode( index );
+	}
+
+	/**
+	 * Gets the child at the given offset. Returns `null` if incorrect index was passed.
+	 *
+	 * @param offset Offset in this document fragment.
+	 * @returns Child node.
+	 */
+	public getChildAtOffset( offset: number ): Node | null {
+		return this._children.getNodeAtOffset( offset );
 	}
 
 	/**
@@ -201,8 +218,8 @@ export default class DocumentFragment extends TypeCheckable implements Iterable<
 		// eslint-disable-next-line @typescript-eslint/no-this-alias, consistent-this
 		let node: Node | DocumentFragment = this;
 
-		for ( const index of relativePath ) {
-			node = ( node as Element | DocumentFragment ).getChild( ( node as Element | DocumentFragment ).offsetToIndex( index ) )!;
+		for ( const offset of relativePath ) {
+			node = ( node as Element | DocumentFragment ).getChildAtOffset( offset )!;
 		}
 
 		return node;
@@ -212,7 +229,7 @@ export default class DocumentFragment extends TypeCheckable implements Iterable<
 	 * Converts offset "position" to index "position".
 	 *
 	 * Returns index of a node that occupies given offset. If given offset is too low, returns `0`. If given offset is
-	 * too high, returns index after last child}.
+	 * too high, returns index after last child.
 	 *
 	 * ```ts
 	 * const textNode = new Text( 'foo' );
@@ -324,41 +341,60 @@ export default class DocumentFragment extends TypeCheckable implements Iterable<
 		return nodes;
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	/**
+	 * Removes children nodes provided as an array and sets
+	 * the {@link module:engine/model/node~Node#parent parent} of these nodes to `null`.
+	 *
+	 * These nodes do not need to be direct siblings.
+	 *
+	 * This method is faster than removing nodes one by one, as it recalculates offsets only once.
+	 *
+	 * @internal
+	 * @param nodes Array of nodes.
+	 */
+	public _removeChildrenArray( nodes: Array<Node> ): void {
+		this._children._removeNodesArray( nodes );
+
+		for ( const node of nodes ) {
+			( node as any ).parent = null;
+		}
+	}
+
+	// @if CK_DEBUG_ENGINE // public override toString(): 'documentFragment' {
 	// @if CK_DEBUG_ENGINE // 	return 'documentFragment';
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // log() {
+	// @if CK_DEBUG_ENGINE // public log(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( 'ModelDocumentFragment: ' + this );
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // printTree() {
-	// @if CK_DEBUG_ENGINE //	let string = 'ModelDocumentFragment: [';
+	// @if CK_DEBUG_ENGINE // public printTree(): string {
+	// @if CK_DEBUG_ENGINE // 	let string = 'ModelDocumentFragment: [';
 
-	// @if CK_DEBUG_ENGINE //	for ( const child of this.getChildren() ) {
-	// @if CK_DEBUG_ENGINE //		string += '\n';
+	// @if CK_DEBUG_ENGINE // 	for ( const child of this.getChildren() as any ) {
+	// @if CK_DEBUG_ENGINE // 		string += '\n';
 
-	// @if CK_DEBUG_ENGINE //		if ( child.is( '$text' ) ) {
-	// @if CK_DEBUG_ENGINE //			const textAttrs = stringifyMap( child._attrs );
+	// @if CK_DEBUG_ENGINE // 		if ( child.is( '$text' ) ) {
+	// @if CK_DEBUG_ENGINE // 			const textAttrs = stringifyMap( child._attrs );
 
-	// @if CK_DEBUG_ENGINE //			string += '\t'.repeat( 1 );
+	// @if CK_DEBUG_ENGINE // 			string += '\t'.repeat( 1 );
 
-	// @if CK_DEBUG_ENGINE //			if ( textAttrs !== '' ) {
-	// @if CK_DEBUG_ENGINE //				string += `<$text${ textAttrs }>` + child.data + '</$text>';
-	// @if CK_DEBUG_ENGINE //			} else {
-	// @if CK_DEBUG_ENGINE //				string += child.data;
-	// @if CK_DEBUG_ENGINE //			}
-	// @if CK_DEBUG_ENGINE //		} else {
-	// @if CK_DEBUG_ENGINE //			string += child.printTree( 1 );
-	// @if CK_DEBUG_ENGINE //		}
-	// @if CK_DEBUG_ENGINE //	}
+	// @if CK_DEBUG_ENGINE // 			if ( textAttrs !== '' ) {
+	// @if CK_DEBUG_ENGINE // 				string += `<$text${ textAttrs }>` + child.data + '</$text>';
+	// @if CK_DEBUG_ENGINE // 			} else {
+	// @if CK_DEBUG_ENGINE // 				string += child.data;
+	// @if CK_DEBUG_ENGINE // 			}
+	// @if CK_DEBUG_ENGINE // 		} else {
+	// @if CK_DEBUG_ENGINE // 			string += child.printTree( 1 );
+	// @if CK_DEBUG_ENGINE // 		}
+	// @if CK_DEBUG_ENGINE // 	}
 
-	// @if CK_DEBUG_ENGINE //	string += '\n]';
+	// @if CK_DEBUG_ENGINE // 	string += '\n]';
 
-	// @if CK_DEBUG_ENGINE //	return string;
+	// @if CK_DEBUG_ENGINE // 	return string;
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // logTree() {
+	// @if CK_DEBUG_ENGINE // public logTree(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( this.printTree() );
 	// @if CK_DEBUG_ENGINE // }
 }
@@ -372,7 +408,7 @@ DocumentFragment.prototype.is = function( type: string ): boolean {
 /**
  * Converts strings to Text and non-iterables to arrays.
  */
-function normalize( nodes: string | Item | Iterable<string | Item> ): Iterable<Node> {
+function normalize( nodes: string | Item | Iterable<string | Item> ): Array<Node> {
 	// Separate condition because string is iterable.
 	if ( typeof nodes == 'string' ) {
 		return [ new Text( nodes ) ];

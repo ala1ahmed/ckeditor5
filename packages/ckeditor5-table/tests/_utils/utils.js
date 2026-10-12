@@ -1,10 +1,10 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import { setData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
-import TableWalker from '../../src/tablewalker';
+import { setData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
+import TableWalker from '../../src/tablewalker.js';
 
 const WIDGET_TABLE_CELL_CLASS = 'ck-editor__editable ck-editor__nested-editable';
 
@@ -35,7 +35,9 @@ const WIDGET_TABLE_CELL_CLASS = 'ck-editor__editable ck-editor__nested-editable'
  *
  * @returns {String}
  */
-export function modelTable( tableData, attributes ) {
+export function modelTable( tableData, attributes = {} ) {
+	const { columnWidths, ...attrs } = attributes;
+
 	const tableRows = makeRows( tableData, {
 		cellElement: 'tableCell',
 		rowElement: 'tableRow',
@@ -44,7 +46,9 @@ export function modelTable( tableData, attributes ) {
 		enforceWrapping: true
 	} );
 
-	return `<table${ formatAttributes( attributes ) }>${ tableRows }</table>`;
+	const tableCols = makeColGroup( columnWidths );
+
+	return `<table${ formatAttributes( attrs ) }>${ tableRows }${ tableCols }</table>`;
 }
 
 /**
@@ -330,7 +334,7 @@ function assertNodeIsNotSelected( model, path ) {
 // Formats table cell attributes
 //
 // @param {Object} attributes Attributes of a cell.
-function formatAttributes( attributes ) {
+export function formatAttributes( attributes ) {
 	let attributesString = '';
 
 	if ( attributes ) {
@@ -376,6 +380,7 @@ function makeRows( tableData, options ) {
 					attributes.class = getClassToSet( attributes );
 					attributes.contenteditable = 'true';
 					attributes.role = 'textbox';
+					attributes.tabindex = '-1';
 				}
 
 				if ( isObject ) {
@@ -405,6 +410,19 @@ function makeRows( tableData, options ) {
 
 			return `${ previousRowsString }<${ rowElement }>${ tableRowString }</${ rowElement }>`;
 		}, '' );
+}
+
+function makeColGroup( columnWidths ) {
+	if ( !columnWidths ) {
+		return '';
+	}
+
+	const cols = columnWidths
+		.split( ',' )
+		.map( width => `<tableColumn columnWidth="${ width }"></tableColumn>` )
+		.join( '' );
+
+	return `<tableColumnGroup>${ cols }</tableColumnGroup>`;
 }
 
 // Properly handles passed CSS class - editor do sort them.

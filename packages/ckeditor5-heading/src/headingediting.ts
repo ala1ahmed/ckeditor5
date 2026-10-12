@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,13 @@
  * @module heading/headingediting
  */
 
-import { Plugin, type Editor, type PluginDependencies } from 'ckeditor5/src/core';
-import { Paragraph } from 'ckeditor5/src/paragraph';
-import { priorities } from 'ckeditor5/src/utils';
-import type { HeadingOption } from './heading';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import { Paragraph } from 'ckeditor5/src/paragraph.js';
+import { priorities } from 'ckeditor5/src/utils.js';
+import type { EnterCommandAfterExecuteEvent } from 'ckeditor5/src/enter.js';
+import type { HeadingOption } from './headingconfig.js';
 
-import HeadingCommand from './headingcommand';
+import HeadingCommand from './headingcommand.js';
 
 const defaultModelElement = 'paragraph';
 
@@ -25,8 +26,15 @@ export default class HeadingEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'HeadingEditing' {
-		return 'HeadingEditing';
+	public static get pluginName() {
+		return 'HeadingEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -48,8 +56,8 @@ export default class HeadingEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ Paragraph ];
+	public static get requires() {
+		return [ Paragraph ] as const;
 	}
 
 	/**
@@ -94,7 +102,7 @@ export default class HeadingEditing extends Plugin {
 		const options: Array<HeadingOption> = editor.config.get( 'heading.options' )!;
 
 		if ( enterCommand ) {
-			this.listenTo( enterCommand, 'afterExecute', ( evt, data ) => {
+			this.listenTo<EnterCommandAfterExecuteEvent>( enterCommand, 'afterExecute', ( evt, data ) => {
 				const positionParent = editor.model.document.selection.getFirstPosition()!.parent;
 				const isHeading = options.some( option => positionParent.is( 'element', option.model ) );
 
@@ -116,17 +124,7 @@ export default class HeadingEditing extends Plugin {
 			view: 'h1',
 			// With a `low` priority, `paragraph` plugin autoparagraphing mechanism is executed. Make sure
 			// this listener is called before it. If not, `h1` will be transformed into a paragraph.
-			converterPriority: priorities.get( 'low' ) + 1
+			converterPriority: priorities.low + 1
 		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ HeadingEditing.pluginName ]: HeadingEditing;
-	}
-
-	interface CommandsMap {
-		heading: HeadingCommand;
 	}
 }

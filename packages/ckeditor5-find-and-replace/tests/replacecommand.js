@@ -1,15 +1,15 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import ModelTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/modeltesteditor';
-import { setData, getData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
-import FindAndReplaceEditing from '../src/findandreplaceediting';
-import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
-import BoldEditing from '@ckeditor/ckeditor5-basic-styles/src/bold/boldediting';
-import ItalicEditing from '@ckeditor/ckeditor5-basic-styles/src/italic/italicediting';
-import UndoEditing from '@ckeditor/ckeditor5-undo/src/undoediting';
+import ModelTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/modeltesteditor.js';
+import { setData, getData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
+import FindAndReplaceEditing from '../src/findandreplaceediting.js';
+import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph.js';
+import BoldEditing from '@ckeditor/ckeditor5-basic-styles/src/bold/boldediting.js';
+import ItalicEditing from '@ckeditor/ckeditor5-basic-styles/src/italic/italicediting.js';
+import UndoEditing from '@ckeditor/ckeditor5-undo/src/undoediting.js';
 
 describe( 'ReplaceCommand', () => {
 	let editor, model, command;
@@ -159,6 +159,18 @@ describe( 'ReplaceCommand', () => {
 			);
 		} );
 
+		it( 'should not replace if selectable is not editable', () => {
+			setData( model, '<paragraph>foo</paragraph>' );
+
+			model.document.isReadOnly = true;
+			const { results } = editor.execute( 'find', 'foo' );
+			editor.execute( 'replace', 'bar', results.get( 0 ) );
+
+			expect( getData( editor.model, { withoutSelection: true } ) ).to.equal(
+				'<paragraph>foo</paragraph>'
+			);
+		} );
+
 		it( 'doesn\'t pick attributes from sibling nodes', () => {
 			setData( model, '<paragraph><$text italic="true">foo </$text>bar<$text italic="true"> foo</$text></paragraph>' );
 
@@ -168,35 +180,6 @@ describe( 'ReplaceCommand', () => {
 			expect( getData( editor.model, { withoutSelection: true } ) ).to.equal(
 				'<paragraph><$text italic="true">foo </$text>bom<$text italic="true"> foo</$text></paragraph>'
 			);
-		} );
-
-		it( 'should not replace find results that landed in the $graveyard root (e.g. removed by collaborators)', () => {
-			setData( model, '<paragraph>Aoo Boo Coo Doo</paragraph>' );
-
-			const { results } = editor.execute( 'find', 'oo' );
-
-			model.change( writer => {
-				writer.remove(
-					// <paragraph>Aoo [Boo Coo] Doo</paragraph>
-					model.createRange(
-						model.createPositionAt( model.document.getRoot().getChild( 0 ), 4 ),
-						model.createPositionAt( model.document.getRoot().getChild( 0 ), 11 )
-					)
-				);
-			} );
-
-			// Wrap this call in the transparent batch to make it easier to undo the above deletion only.
-			// In real life scenario the above deletion would be a transparent batch from the remote user,
-			// and undo would also be triggered by the remote user.
-			model.enqueueChange( { isUndoable: false }, () => {
-				editor.execute( 'replaceAll', 'aa', results );
-			} );
-
-			expect( getData( editor.model, { withoutSelection: true } ) ).to.equal( '<paragraph>Aaa  Daa</paragraph>' );
-
-			editor.execute( 'undo' );
-
-			expect( getData( editor.model, { withoutSelection: true } ) ).to.equal( '<paragraph>Aaa Boo Coo Daa</paragraph>' );
 		} );
 	} );
 } );

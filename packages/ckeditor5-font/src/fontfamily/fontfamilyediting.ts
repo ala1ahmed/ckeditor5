@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,12 @@
  * @module font/fontfamily/fontfamilyediting
  */
 
-import { type Editor, Plugin } from 'ckeditor5/src/core';
-import type { ViewElement } from 'ckeditor5/src/engine';
+import { type Editor, Plugin } from 'ckeditor5/src/core.js';
+import type { ViewElement } from 'ckeditor5/src/engine.js';
 
-import FontFamilyCommand from './fontfamilycommand';
-import { normalizeOptions } from './utils';
-import { buildDefinition, FONT_FAMILY } from '../utils';
+import FontFamilyCommand from './fontfamilycommand.js';
+import { normalizeOptions } from './utils.js';
+import { buildDefinition, FONT_FAMILY } from '../utils.js';
 
 /**
  * The font family editing feature.
@@ -20,14 +20,21 @@ import { buildDefinition, FONT_FAMILY } from '../utils';
  * It introduces the {@link module:font/fontfamily/fontfamilycommand~FontFamilyCommand command} and
  * the `fontFamily` attribute in the {@link module:engine/model/model~Model model} which renders
  * in the {@link module:engine/view/view view} as an inline `<span>` element (`<span style="font-family: Arial">`),
- * depending on the {@link module:font/fontfamily~FontFamilyConfig configuration}.
+ * depending on the {@link module:font/fontconfig~FontFamilyConfig configuration}.
  */
 export default class FontFamilyEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'FontFamilyEditing' {
-		return 'FontFamilyEditing';
+	public static get pluginName() {
+		return 'FontFamilyEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -129,15 +136,5 @@ export default class FontFamilyEditing extends Plugin {
 				value: ( viewElement: ViewElement ) => viewElement.getAttribute( 'face' )
 			}
 		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ FontFamilyEditing.pluginName ]: FontFamilyEditing;
-	}
-
-	interface CommandsMap {
-		[ FONT_FAMILY ]: FontFamilyCommand;
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,13 +7,14 @@
  * @module engine/model/operation/detachoperation
  */
 
-import Operation from './operation';
-import Range from '../range';
-import { _remove } from './utils';
+import Operation from './operation.js';
+import Range from '../range.js';
+import { _remove } from './utils.js';
 
-import type Position from '../position';
+import type Position from '../position.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
+import type { Selectable } from '../selection.js';
 
 // @if CK_DEBUG_ENGINE // const ModelRange = require( '../range' ).default;
 
@@ -60,6 +61,13 @@ export default class DetachOperation extends Operation {
 	/**
 	 * @inheritDoc
 	 */
+	public get affectedSelectable(): Selectable {
+		return null;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public override toJSON(): unknown {
 		const json: any = super.toJSON();
 
@@ -98,11 +106,11 @@ export default class DetachOperation extends Operation {
 		return 'DetachOperation';
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
-	// @if CK_DEBUG_ENGINE // const range = ModelRange._createFromPositionAndShift( this.sourcePosition, this.howMany );
-	// @if CK_DEBUG_ENGINE //	const nodes = Array.from( range.getItems() );
-	// @if CK_DEBUG_ENGINE //	const nodeString = nodes.length > 1 ? `[ ${ nodes.length } ]` : nodes[ 0 ];
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
+	// @if CK_DEBUG_ENGINE // 	const range = ModelRange._createFromPositionAndShift( this.sourcePosition, this.howMany );
+	// @if CK_DEBUG_ENGINE // 	const nodes = Array.from( range.getItems() );
+	// @if CK_DEBUG_ENGINE // 	const nodeString = nodes.length > 1 ? `[ ${ nodes.length } ]` : nodes[ 0 ];
 
-	// @if CK_DEBUG_ENGINE //	return `DetachOperation( ${ this.baseVersion } ): ${ nodeString } -> ${ range }`;
+	// @if CK_DEBUG_ENGINE // 	return `DetachOperation( ${ this.baseVersion } ): ${ nodeString } -> ${ range }`;
 	// @if CK_DEBUG_ENGINE // }
 }

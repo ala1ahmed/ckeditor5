@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,16 @@
  * @module paste-from-office/pastefromoffice
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
+import { Plugin } from 'ckeditor5/src/core.js';
 
-import { ClipboardPipeline } from 'ckeditor5/src/clipboard';
+import { ClipboardPipeline } from 'ckeditor5/src/clipboard.js';
 
-import GoogleDocsNormalizer from './normalizers/googledocsnormalizer';
-import MSWordNormalizer from './normalizers/mswordnormalizer';
+import MSWordNormalizer from './normalizers/mswordnormalizer.js';
+import GoogleDocsNormalizer from './normalizers/googledocsnormalizer.js';
+import GoogleSheetsNormalizer from './normalizers/googlesheetsnormalizer.js';
 
-import { parseHtml } from './filters/parse';
-import type { Normalizer, NormalizerData } from './normalizer';
+import { parseHtml } from './filters/parse.js';
+import type { Normalizer, NormalizerData } from './normalizer.js';
 
 /**
  * The Paste from Office plugin.
@@ -34,15 +35,22 @@ export default class PasteFromOffice extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'PasteFromOffice' {
-		return 'PasteFromOffice';
+	public static get pluginName() {
+		return 'PasteFromOffice' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ClipboardPipeline ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ ClipboardPipeline ] as const;
 	}
 
 	/**
@@ -50,13 +58,16 @@ export default class PasteFromOffice extends Plugin {
 	 */
 	public init(): void {
 		const editor = this.editor;
+		const clipboardPipeline: ClipboardPipeline = editor.plugins.get( 'ClipboardPipeline' );
 		const viewDocument = editor.editing.view.document;
 		const normalizers: Array<Normalizer> = [];
+		const hasMultiLevelListPlugin = this.editor.plugins.has( 'MultiLevelList' );
 
-		normalizers.push( new MSWordNormalizer( viewDocument ) );
+		normalizers.push( new MSWordNormalizer( viewDocument, hasMultiLevelListPlugin ) );
 		normalizers.push( new GoogleDocsNormalizer( viewDocument ) );
+		normalizers.push( new GoogleSheetsNormalizer( viewDocument ) );
 
-		editor.plugins.get( 'ClipboardPipeline' ).on(
+		clipboardPipeline.on(
 			'inputTransformation',
 			( evt, data: NormalizerData ) => {
 				if ( data._isTransformedWithPasteFromOffice ) {
@@ -73,7 +84,9 @@ export default class PasteFromOffice extends Plugin {
 				const activeNormalizer = normalizers.find( normalizer => normalizer.isActive( htmlString ) );
 
 				if ( activeNormalizer ) {
-					data._parsedData = parseHtml( htmlString, viewDocument.stylesProcessor );
+					if ( !data._parsedData ) {
+						data._parsedData = parseHtml( htmlString, viewDocument.stylesProcessor );
+					}
 
 					activeNormalizer.execute( data );
 
@@ -82,11 +95,5 @@ export default class PasteFromOffice extends Plugin {
 			},
 			{ priority: 'high' }
 		);
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ PasteFromOffice.pluginName ]: PasteFromOffice;
 	}
 }

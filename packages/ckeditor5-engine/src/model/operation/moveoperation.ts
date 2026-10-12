@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,15 @@
  * @module engine/model/operation/moveoperation
  */
 
-import Operation from './operation';
-import Position from '../position';
-import Range from '../range';
-import { _move } from './utils';
+import Operation from './operation.js';
+import Position from '../position.js';
+import Range from '../range.js';
+import { _move } from './utils.js';
+import type { Selectable } from '../selection.js';
 
 import { CKEditorError, compareArrays } from '@ckeditor/ckeditor5-utils';
 
-import type Document from '../document';
+import type Document from '../document.js';
 
 // @if CK_DEBUG_ENGINE // const ModelRange = require( '../range' ).default;
 
@@ -72,6 +73,16 @@ export default class MoveOperation extends Operation {
 		}
 
 		return 'move';
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		return [
+			Range._createFromPositionAndShift( this.sourcePosition, this.howMany ),
+			Range._createFromPositionAndShift( this.targetPosition, 0 )
+		];
 	}
 
 	/**
@@ -185,7 +196,7 @@ export default class MoveOperation extends Operation {
 	}
 
 	/**
-	 * Creates `MoveOperation` object from deserilized object, i.e. from parsed JSON string.
+	 * Creates `MoveOperation` object from deserialized object, i.e. from parsed JSON string.
 	 *
 	 * @param json Deserialized JSON object.
 	 * @param document Document on which this operation will be applied.
@@ -197,9 +208,9 @@ export default class MoveOperation extends Operation {
 		return new this( sourcePosition, json.howMany, targetPosition, json.baseVersion );
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	const range = ModelRange._createFromPositionAndShift( this.sourcePosition, this.howMany );
 
-	// @if CK_DEBUG_ENGINE //	return `MoveOperation( ${ this.baseVersion } ): ${ range } -> ${ this.targetPosition }`;
+	// @if CK_DEBUG_ENGINE // 	return `MoveOperation( ${ this.baseVersion } ): ${ range } -> ${ this.targetPosition }`;
 	// @if CK_DEBUG_ENGINE // }
 }

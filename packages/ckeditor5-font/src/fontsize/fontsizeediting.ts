@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,13 +7,13 @@
  * @module font/fontsize/fontsizeediting
  */
 
-import { Plugin, type Editor } from 'ckeditor5/src/core';
-import { CKEditorError } from 'ckeditor5/src/utils';
-import { isLength, isPercentage, type ViewElement } from 'ckeditor5/src/engine';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import { CKEditorError } from 'ckeditor5/src/utils.js';
+import { isLength, isPercentage, type ViewElement } from 'ckeditor5/src/engine.js';
 
-import FontSizeCommand from './fontsizecommand';
-import { normalizeOptions } from './utils';
-import { buildDefinition, FONT_SIZE, type FontConverterDefinition } from '../utils';
+import FontSizeCommand from './fontsizecommand.js';
+import { normalizeOptions } from './utils.js';
+import { buildDefinition, FONT_SIZE, type FontConverterDefinition } from '../utils.js';
 
 // Mapping of `<font size="..">` styling to CSS's `font-size` values.
 const styleFontSize = [
@@ -36,14 +36,21 @@ const styleFontSize = [
  * * a style attribute (`<span style="font-size:12px">...</span>`),
  * * or a class attribute (`<span class="text-small">...</span>`)
  *
- * depending on the {@link module:font/fontsize~FontSizeConfig configuration}.
+ * depending on the {@link module:font/fontconfig~FontSizeConfig configuration}.
  */
 export default class FontSizeEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'FontSizeEditing' {
-		return 'FontSizeEditing';
+	public static get pluginName() {
+		return 'FontSizeEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -101,7 +108,7 @@ export default class FontSizeEditing extends Plugin {
 	 * These converters enable keeping any value found as `style="font-size: *"` as a value of an attribute on a text even
 	 * if it is not defined in the plugin configuration.
 	 *
-	 * @param definition {@link module:engine/conversion/conversion~ConverterDefinition Converter definition} out of input data.
+	 * @param definition Converter definition out of input data.
 	 */
 	private _prepareAnyValueConverters( definition: FontConverterDefinition ): void {
 		const editor = this.editor;
@@ -113,10 +120,10 @@ export default class FontSizeEditing extends Plugin {
 
 		if ( presets.length ) {
 			/**
-			 * If {@link module:font/fontsize~FontSizeConfig#supportAllValues `config.fontSize.supportAllValues`} is `true`,
+			 * If {@link module:font/fontconfig~FontSizeConfig#supportAllValues `config.fontSize.supportAllValues`} is `true`,
 			 * you need to use numerical values as font size options.
 			 *
-			 * See valid examples described in the {@link module:font/fontsize~FontSizeConfig#options plugin configuration}.
+			 * See valid examples described in the {@link module:font/fontconfig~FontSizeConfig#options plugin configuration}.
 			 *
 			 * @error font-size-invalid-use-of-named-presets
 			 * @param {Array.<String>} presets Invalid values.
@@ -188,15 +195,5 @@ export default class FontSizeEditing extends Plugin {
 				}
 			}
 		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ FontSizeEditing.pluginName ]: FontSizeEditing;
-	}
-
-	interface CommandsMap {
-		[ FONT_SIZE ]: FontSizeCommand;
 	}
 }

@@ -1,25 +1,25 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals document, Event, console */
 
-import View from '@ckeditor/ckeditor5-ui/src/view';
+import View from '@ckeditor/ckeditor5-ui/src/view.js';
 
-import InlineEditorUI from '../src/inlineeditorui';
-import EditorUI from '@ckeditor/ckeditor5-ui/src/editorui/editorui';
-import InlineEditorUIView from '../src/inlineeditoruiview';
-import InlineEditor from '../src/inlineeditor';
-import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
+import InlineEditorUI from '../src/inlineeditorui.js';
+import EditorUI from '@ckeditor/ckeditor5-ui/src/editorui/editorui.js';
+import InlineEditorUIView from '../src/inlineeditoruiview.js';
+import InlineEditor from '../src/inlineeditor.js';
+import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph.js';
 import { Image, ImageCaption, ImageToolbar } from '@ckeditor/ckeditor5-image';
-import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor';
+import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor.js';
 
-import { keyCodes } from '@ckeditor/ckeditor5-utils/src/keyboard';
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
-import { assertBinding } from '@ckeditor/ckeditor5-utils/tests/_utils/utils';
+import { keyCodes } from '@ckeditor/ckeditor5-utils/src/keyboard.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
+import { assertBinding } from '@ckeditor/ckeditor5-utils/tests/_utils/utils.js';
 import { isElement } from 'lodash-es';
-import { setData as setModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
+import { setData as setModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
 
 describe( 'InlineEditorUI', () => {
 	let editor, view, ui, viewElement;
@@ -40,8 +40,8 @@ describe( 'InlineEditorUI', () => {
 			} );
 	} );
 
-	afterEach( () => {
-		editor.destroy();
+	afterEach( async () => {
+		await editor.destroy();
 	} );
 
 	describe( 'constructor()', () => {
@@ -178,7 +178,7 @@ describe( 'InlineEditorUI', () => {
 		} );
 
 		describe( 'placeholder', () => {
-			it( 'sets placeholder from editor.config.placeholder', () => {
+			it( 'sets placeholder from editor.config.placeholder - string', () => {
 				return VirtualInlineTestEditor
 					.create( 'foo', {
 						extraPlugins: [ Paragraph ],
@@ -193,14 +193,11 @@ describe( 'InlineEditorUI', () => {
 					} );
 			} );
 
-			it( 'sets placeholder from the "placeholder" attribute of a passed <textarea>', () => {
-				const element = document.createElement( 'textarea' );
-
-				element.setAttribute( 'placeholder', 'placeholder-text' );
-
+			it( 'sets placeholder from editor.config.placeholder - object', () => {
 				return VirtualInlineTestEditor
-					.create( element, {
-						extraPlugins: [ Paragraph ]
+					.create( 'foo', {
+						extraPlugins: [ Paragraph ],
+						placeholder: { main: 'placeholder-text' }
 					} )
 					.then( newEditor => {
 						const firstChild = newEditor.editing.view.document.getRoot().getChild( 0 );
@@ -211,20 +208,16 @@ describe( 'InlineEditorUI', () => {
 					} );
 			} );
 
-			it( 'uses editor.config.placeholder rather than the "placeholder" attribute of a passed <textarea>', () => {
-				const element = document.createElement( 'textarea' );
-
-				element.setAttribute( 'placeholder', 'placeholder-text' );
-
+			it( 'sets placeholder from editor.config.placeholder - object (invalid root name)', () => {
 				return VirtualInlineTestEditor
-					.create( element, {
-						placeholder: 'config takes precedence',
-						extraPlugins: [ Paragraph ]
+					.create( 'foo', {
+						extraPlugins: [ Paragraph ],
+						placeholder: { 'root-name-that-not-exists': 'placeholder-text' }
 					} )
 					.then( newEditor => {
 						const firstChild = newEditor.editing.view.document.getRoot().getChild( 0 );
 
-						expect( firstChild.getAttribute( 'data-placeholder' ) ).to.equal( 'config takes precedence' );
+						expect( firstChild.hasAttribute( 'data-placeholder' ) ).to.equal( false );
 
 						return newEditor.destroy();
 					} );
@@ -369,6 +362,7 @@ describe( 'Focus handling and navigation between editing root and editor toolbar
 		editor = await InlineEditor.create( editorElement, {
 			plugins: [ Paragraph, Image, ImageToolbar, ImageCaption ],
 			toolbar: [ 'imageTextAlternative' ],
+			menuBar: { isVisible: true },
 			image: {
 				toolbar: [ 'toggleImageCaption' ]
 			}

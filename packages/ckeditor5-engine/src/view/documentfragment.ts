@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,16 +7,16 @@
  * @module engine/view/documentfragment
  */
 
-import TypeCheckable from './typecheckable';
-import Text from './text';
-import TextProxy from './textproxy';
+import TypeCheckable from './typecheckable.js';
+import Text from './text.js';
+import TextProxy from './textproxy.js';
 
 import { EmitterMixin, isIterable } from '@ckeditor/ckeditor5-utils';
 
-import type { default as Document, ChangeType } from './document';
+import type { default as Document, ChangeType } from './document.js';
 
-import type Item from './item';
-import type Node from './node';
+import type Item from './item.js';
+import type Node from './node.js';
 
 /**
  * Document fragment.
@@ -25,7 +25,7 @@ import type Node from './node';
  * {@link module:engine/view/upcastwriter~UpcastWriter#createDocumentFragment `UpcastWriter#createDocumentFragment()`}
  * method.
  */
-export default class DocumentFragment extends EmitterMixin( TypeCheckable ) implements Iterable<Node> {
+export default class DocumentFragment extends /* #__PURE__ */ EmitterMixin( TypeCheckable ) implements Iterable<Node> {
 	/**
 	 * The document to which this document fragment belongs.
 	 */
@@ -94,6 +94,20 @@ export default class DocumentFragment extends EmitterMixin( TypeCheckable ) impl
 	 */
 	public get parent(): null {
 		return null;
+	}
+
+	/**
+	 * Artificial element name. Returns `undefined`. Added for compatibility reasons.
+	 */
+	public get name(): undefined {
+		return undefined;
+	}
+
+	/**
+	 * Artificial element getFillerOffset. Returns `undefined`. Added for compatibility reasons.
+	 */
+	public get getFillerOffset(): undefined {
+		return undefined;
 	}
 
 	/**
@@ -207,7 +221,6 @@ export default class DocumentFragment extends EmitterMixin( TypeCheckable ) impl
 	 * @internal
 	 * @param type Type of the change.
 	 * @param node Changed node.
-	 * @fires change
 	 */
 	public _fireChange( type: ChangeType, node: Node | DocumentFragment ): void {
 		this.fire( 'change:' + type, node );
@@ -234,23 +247,23 @@ export default class DocumentFragment extends EmitterMixin( TypeCheckable ) impl
 		return this._customProperties.delete( key );
 	}
 
-	// @if CK_DEBUG_ENGINE // printTree() {
-	// @if CK_DEBUG_ENGINE //	let string = 'ViewDocumentFragment: [';
+	// @if CK_DEBUG_ENGINE // public printTree(): string {
+	// @if CK_DEBUG_ENGINE // 	let string = 'ViewDocumentFragment: [';
 
-	// @if CK_DEBUG_ENGINE //	for ( const child of this.getChildren() ) {
-	// @if CK_DEBUG_ENGINE //		if ( child.is( '$text' ) ) {
-	// @if CK_DEBUG_ENGINE //			string += '\n' + '\t'.repeat( 1 ) + child.data;
-	// @if CK_DEBUG_ENGINE //		} else {
-	// @if CK_DEBUG_ENGINE //			string += '\n' + child.printTree( 1 );
-	// @if CK_DEBUG_ENGINE //		}
-	// @if CK_DEBUG_ENGINE //	}
+	// @if CK_DEBUG_ENGINE // 	for ( const child of this.getChildren() as any ) {
+	// @if CK_DEBUG_ENGINE // 		if ( child.is( '$text' ) ) {
+	// @if CK_DEBUG_ENGINE // 			string += '\n' + '\t'.repeat( 1 ) + child.data;
+	// @if CK_DEBUG_ENGINE // 		} else {
+	// @if CK_DEBUG_ENGINE // 			string += '\n' + child.printTree( 1 );
+	// @if CK_DEBUG_ENGINE // 		}
+	// @if CK_DEBUG_ENGINE // 	}
 
-	// @if CK_DEBUG_ENGINE //	string += '\n]';
+	// @if CK_DEBUG_ENGINE // 	string += '\n]';
 
-	// @if CK_DEBUG_ENGINE //	return string;
+	// @if CK_DEBUG_ENGINE // 	return string;
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // logTree() {
+	// @if CK_DEBUG_ENGINE // public logTree(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( this.printTree() );
 	// @if CK_DEBUG_ENGINE // }
 }

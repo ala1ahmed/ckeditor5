@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,15 @@
  * @module engine/model/selection
  */
 
-import TypeCheckable from './typecheckable';
-import Node from './node';
-import Position, { type PositionOffset } from './position';
-import Range from './range';
+import TypeCheckable from './typecheckable.js';
+import Node from './node.js';
+import Position, { type PositionOffset } from './position.js';
+import Range from './range.js';
 
-import type DocumentFragment from './documentfragment';
-import type DocumentSelection from './documentselection';
-import type Element from './element';
-import type Item from './item';
+import type DocumentFragment from './documentfragment.js';
+import type DocumentSelection from './documentselection.js';
+import type Element from './element.js';
+import type Item from './item.js';
 
 import { CKEditorError, EmitterMixin, isIterable } from '@ckeditor/ckeditor5-utils';
 
@@ -26,7 +26,7 @@ import { CKEditorError, EmitterMixin, isIterable } from '@ckeditor/ckeditor5-uti
  * Additionally, selection may have its own attributes (think – whether text typed in in this selection
  * should have those attributes – e.g. whether you type a bolded text).
  */
-export default class Selection extends EmitterMixin( TypeCheckable ) {
+export default class Selection extends /* #__PURE__ */ EmitterMixin( TypeCheckable ) {
 	/**
 	 * Specifies whether the last added range was added as a backward or forward range.
 	 */
@@ -637,13 +637,23 @@ export default class Selection extends EmitterMixin( TypeCheckable ) {
 	 * </block>
 	 * ```
 	 *
-	 * **Special case**: If a selection ends at the beginning of a block, that block is not returned as from user perspective
-	 * this block wasn't selected. See [#984](https://github.com/ckeditor/ckeditor5-engine/issues/984) for more details.
+	 * **Special case**: Selection ignores first and/or last blocks if nothing (from user perspective) is selected in them.
 	 *
 	 * ```xml
+	 * // Selection ends and the beginning of the last block.
 	 * <paragraph>[a</paragraph>
 	 * <paragraph>b</paragraph>
-	 * <paragraph>]c</paragraph> // this block will not be returned
+	 * <paragraph>]c</paragraph> // This block will not be returned
+	 *
+	 * // Selection begins at the end of the first block.
+	 * <paragraph>a[</paragraph> // This block will not be returned
+	 * <paragraph>b</paragraph>
+	 * <paragraph>c]</paragraph>
+	 *
+	 * // Selection begings at the end of the first block and ends at the beginning of the last block.
+	 * <paragraph>a[</paragraph> // This block will not be returned
+	 * <paragraph>b</paragraph>
+	 * <paragraph>]c</paragraph> // This block will not be returned
 	 * ```
 	 */
 	public* getSelectedBlocks(): IterableIterator<Element> {
@@ -653,7 +663,7 @@ export default class Selection extends EmitterMixin( TypeCheckable ) {
 			// Get start block of range in case of a collapsed range.
 			const startBlock = getParentBlock( range.start, visited );
 
-			if ( startBlock && isTopBlockInRange( startBlock, range ) ) {
+			if ( isStartBlockSelected( startBlock, range ) ) {
 				yield startBlock as any;
 			}
 
@@ -667,8 +677,7 @@ export default class Selection extends EmitterMixin( TypeCheckable ) {
 
 			const endBlock = getParentBlock( range.end, visited );
 
-			// #984. Don't return the end block if the range ends right at its beginning.
-			if ( endBlock && !range.end.isTouching( Position._createAt( endBlock, 0 ) ) && isTopBlockInRange( endBlock, range ) ) {
+			if ( isEndBlockSelected( endBlock, range ) ) {
 				yield endBlock as any;
 			}
 		}
@@ -771,7 +780,7 @@ export type SelectionChangeEvent = {
 /**
  * Fired when selection range(s) changed.
  *
- * @eventName change:range
+ * @eventName ~Selection#change:range
  * @param directChange In case of {@link module:engine/model/selection~Selection} class it is always set
  * to `true` which indicates that the selection change was caused by a direct use of selection's API.
  * The {@link module:engine/model/documentselection~DocumentSelection}, however, may change because its position
@@ -790,7 +799,7 @@ export type SelectionChangeRangeEvent = {
 /**
  * Fired when selection attribute changed.
  *
- * @eventName change:attribute
+ * @eventName ~Selection#change:attribute
  * @param directChange In case of {@link module:engine/model/selection~Selection} class it is always set
  * to `true` which indicates that the selection change was caused by a direct use of selection's API.
  * The {@link module:engine/model/documentselection~DocumentSelection}, however, may change because its attributes
@@ -874,6 +883,70 @@ function isTopBlockInRange( block: Node, range: Range ) {
 	const isParentInRange = range.containsRange( Range._createOn( parentBlock ), true );
 
 	return !isParentInRange;
+}
+
+/**
+ * If a selection starts at the end of a block, that block is not returned as from the user's perspective this block wasn't selected.
+ * See [#11585](https://github.com/ckeditor/ckeditor5/issues/11585) for more details.
+ *
+ * ```xml
+ * <paragraph>a[</paragraph> // This block will not be returned
+ * <paragraph>b</paragraph>
+ * <paragraph>c]</paragraph>
+ * ```
+ *
+ * Collapsed selection is not affected by it:
+ *
+ * ```xml
+ * <paragraph>a[]</paragraph> // This block will be returned
+ * ```
+ */
+function isStartBlockSelected( startBlock: Element | undefined, range: Range ): boolean {
+	if ( !startBlock ) {
+		return false;
+	}
+
+	if ( range.isCollapsed || startBlock.isEmpty ) {
+		return true;
+	}
+
+	if ( range.start.isTouching( Position._createAt( startBlock, startBlock.maxOffset ) ) ) {
+		return false;
+	}
+
+	return isTopBlockInRange( startBlock, range );
+}
+
+/**
+ * If a selection ends at the beginning of a block, that block is not returned as from the user's perspective this block wasn't selected.
+ * See [#984](https://github.com/ckeditor/ckeditor5-engine/issues/984) for more details.
+ *
+ * ```xml
+ * <paragraph>[a</paragraph>
+ * <paragraph>b</paragraph>
+ * <paragraph>]c</paragraph> // this block will not be returned
+ * ```
+ *
+ * Collapsed selection is not affected by it:
+ *
+ * ```xml
+ * <paragraph>[]a</paragraph> // this block will be returned
+ * ```
+ */
+function isEndBlockSelected( endBlock: Element | undefined, range: Range ): boolean {
+	if ( !endBlock ) {
+		return false;
+	}
+
+	if ( range.isCollapsed || endBlock.isEmpty ) {
+		return true;
+	}
+
+	if ( range.end.isTouching( Position._createAt( endBlock, 0 ) ) ) {
+		return false;
+	}
+
+	return isTopBlockInRange( endBlock, range );
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,23 +7,30 @@
  * @module highlight/highlightediting
  */
 
-import { Plugin, type Editor } from 'ckeditor5/src/core';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
 
-import HighlightCommand from './highlightcommand';
-import type { HighlightOption } from './highlight';
+import HighlightCommand from './highlightcommand.js';
+import type { HighlightOption } from './highlightconfig.js';
 
 /**
  * The highlight editing feature. It introduces the {@link module:highlight/highlightcommand~HighlightCommand command} and the `highlight`
  * attribute in the {@link module:engine/model/model~Model model} which renders in the {@link module:engine/view/view view}
  * as a `<mark>` element with a `class` attribute (`<mark class="marker-green">...</mark>`) depending
- * on the {@link module:highlight/highlight~HighlightConfig configuration}.
+ * on the {@link module:highlight/highlightconfig~HighlightConfig configuration}.
  */
 export default class HighlightEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'HighlightEditing' {
-		return 'HighlightEditing';
+	public static get pluginName() {
+		return 'HighlightEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -127,13 +134,3 @@ type HighlightConverterDefinition = {
 	model: { key: string; values: Array<string> };
 	view: Record<string, { name: string; classes: string }>;
 };
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface CommandsMap {
-		highlight: HighlightCommand;
-	}
-
-	interface PluginsMap {
-		[ HighlightEditing.pluginName ]: HighlightEditing;
-	}
-}

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,9 @@
  * @module image/image/imagetypecommand
  */
 
-import type { Element } from 'ckeditor5/src/engine';
-import { Command, type Editor } from 'ckeditor5/src/core';
+import type { Element } from 'ckeditor5/src/engine.js';
+import { Command, type Editor } from 'ckeditor5/src/core.js';
+import type ImageUtils from '../imageutils.js';
 
 /**
  * The image type command. It changes the type of a selected image, depending on the configuration.
@@ -35,7 +36,7 @@ export default class ImageTypeCommand extends Command {
 	 */
 	public override refresh(): void {
 		const editor = this.editor;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 		const element = imageUtils.getClosestSelectedImageElement( this.editor.model.document.selection );
 
 		if ( this._modelElementName === 'imageBlock' ) {
@@ -49,14 +50,16 @@ export default class ImageTypeCommand extends Command {
 	 * Executes the command and changes the type of a selected image.
 	 *
 	 * @fires execute
+	 * @param options.setImageSizes Specifies whether the image `width` and `height` attributes should be set automatically.
+	 * The default is `true`.
 	 * @returns An object containing references to old and new model image elements
 	 * (for before and after the change) so external integrations can hook into the decorated
 	 * `execute` event and handle this change. `null` if the type change failed.
 	 */
-	public override execute(): { oldElement: Element; newElement: Element } | null {
+	public override execute( options: { setImageSizes?: boolean } = {} ): { oldElement: Element; newElement: Element } | null {
 		const editor = this.editor;
 		const model = this.editor.model;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 		const oldElement = imageUtils.getClosestSelectedImageElement( model.document.selection )!;
 		const attributes = Object.fromEntries( oldElement.getAttributes() );
 
@@ -68,11 +71,18 @@ export default class ImageTypeCommand extends Command {
 		}
 
 		return model.change( writer => {
+			const { setImageSizes = true } = options;
+
 			// Get all markers that contain the old image element.
 			const markers = Array.from( model.markers )
 				.filter( marker => marker.getRange().containsItem( oldElement ) );
 
-			const newElement = imageUtils.insertImage( attributes, model.createSelection( oldElement, 'on' ), this._modelElementName );
+			const newElement = imageUtils.insertImage(
+				attributes,
+				model.createSelection( oldElement, 'on' ),
+				this._modelElementName,
+				{ setImageSizes }
+			);
 
 			if ( !newElement ) {
 				return null;

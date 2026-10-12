@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,13 @@
  * @module ui/toolbar/block/blockbuttonview
  */
 
-import ButtonView from '../../button/buttonview';
-import '../../../theme/components/toolbar/blocktoolbar.css';
+import ButtonView from '../../button/buttonview.js';
 
 import { toUnit, type Locale } from '@ckeditor/ckeditor5-utils';
 
-const toPx = toUnit( 'px' );
+import '../../../theme/components/toolbar/blocktoolbar.css';
+
+const toPx = /* #__PURE__ */ toUnit( 'px' );
 
 /**
  * The block button view class.
@@ -20,11 +21,20 @@ const toPx = toUnit( 'px' );
  * This view represents a button attached next to block element where the selection is anchored.
  *
  * See {@link module:ui/toolbar/block/blocktoolbar~BlockToolbar}.
- *
- * @extends {module:ui/button/buttonview~ButtonView}
  */
 export default class BlockButtonView extends ButtonView {
+	/**
+	 * Top offset.
+	 *
+	 * @observable
+	 */
 	declare public top: number;
+
+	/**
+	 * Left offset.
+	 *
+	 * @observable
+	 */
 	declare public left: number;
 
 	/**
@@ -40,18 +50,7 @@ export default class BlockButtonView extends ButtonView {
 
 		this.isToggleable = true;
 
-		/**
-		 * Top offset.
-		 *
-		 * @member {Number} #top
-		 */
 		this.set( 'top', 0 );
-
-		/**
-		 * Left offset.
-		 *
-		 * @member {Number} #left
-		 */
 		this.set( 'left', 0 );
 
 		this.extendTemplate( {

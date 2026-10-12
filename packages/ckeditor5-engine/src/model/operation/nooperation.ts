@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,7 +7,8 @@
  * @module engine/model/operation/nooperation
  */
 
-import Operation from './operation';
+import Operation from './operation.js';
+import type { Selectable } from '../selection.js';
 
 /**
  * Operation which is doing nothing ("empty operation", "do-nothing operation", "noop"). This is an operation,
@@ -20,6 +21,13 @@ import Operation from './operation';
 export default class NoOperation extends Operation {
 	public get type(): 'noop' {
 		return 'noop';
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		return null;
 	}
 
 	/**
@@ -47,7 +55,7 @@ export default class NoOperation extends Operation {
 		return 'NoOperation';
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `NoOperation( ${ this.baseVersion } )`;
 	// @if CK_DEBUG_ENGINE // }
 }

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,42 +7,50 @@
  * @module image/imagestyle/imagestyleui
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
-import { ButtonView, createDropdown, addToolbarToDropdown, SplitButtonView } from 'ckeditor5/src/ui';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { ButtonView, createDropdown, addToolbarToDropdown, SplitButtonView } from 'ckeditor5/src/ui.js';
 import { isObject, identity } from 'lodash-es';
-import ImageStyleEditing from './imagestyleediting';
-import utils from './utils';
-import type { ImageStyleOptionDefinition } from '../imagestyle';
+import ImageStyleEditing from './imagestyleediting.js';
+import utils from './utils.js';
+import type { ImageStyleDropdownDefinition, ImageStyleOptionDefinition } from '../imageconfig.js';
+import type ImageStyleCommand from './imagestylecommand.js';
 
 import '../../theme/imagestyle.css';
 
 /**
  * The image style UI plugin.
  *
- * It registers buttons corresponding to the {@link module:image/image~ImageConfig#styles} configuration.
- * It also registers the {@link module:image/imagestyle/utils~DEFAULT_DROPDOWN_DEFINITIONS default drop-downs} and the
- * custom drop-downs defined by the developer in the {@link module:image/image~ImageConfig#toolbar} configuration.
+ * It registers buttons corresponding to the {@link module:image/imageconfig~ImageConfig#styles} configuration.
+ * It also registers the {@link module:image/imagestyle/utils#DEFAULT_DROPDOWN_DEFINITIONS default drop-downs} and the
+ * custom drop-downs defined by the developer in the {@link module:image/imageconfig~ImageConfig#toolbar} configuration.
  */
 export default class ImageStyleUI extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageStyleEditing ];
+	public static get requires() {
+		return [ ImageStyleEditing ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageStyleUI' {
-		return 'ImageStyleUI';
+	public static get pluginName() {
+		return 'ImageStyleUI' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
 	 * Returns the default localized style titles provided by the plugin.
 	 *
 	 * The following localized titles corresponding with
-	 * {@link module:image/imagestyle/utils~DEFAULT_OPTIONS} are available:
+	 * {@link module:image/imagestyle/utils#DEFAULT_OPTIONS} are available:
 	 *
 	 * * `'Wrap text'`,
 	 * * `'Break text'`,
@@ -74,9 +82,10 @@ export default class ImageStyleUI extends Plugin {
 	public init(): void {
 		const plugins = this.editor.plugins;
 		const toolbarConfig = this.editor.config.get( 'image.toolbar' ) || [];
+		const imageStyleEditing: ImageStyleEditing = plugins.get( 'ImageStyleEditing' );
 
 		const definedStyles = translateStyles(
-			plugins.get( 'ImageStyleEditing' ).normalizedStyles!,
+			imageStyleEditing.normalizedStyles!,
 			this.localizedDefaultStylesTitles
 		);
 
@@ -185,7 +194,7 @@ export default class ImageStyleUI extends Plugin {
 		const buttonName = buttonConfig.name;
 
 		this.editor.ui.componentFactory.add( getUIComponentName( buttonName ), locale => {
-			const command = this.editor.commands.get( 'imageStyle' )!;
+			const command: ImageStyleCommand = this.editor.commands.get( 'imageStyle' )!;
 			const view = new ButtonView( locale );
 
 			view.set( {
@@ -239,71 +248,4 @@ function getUIComponentName( name: string ): string {
  */
 function getDropdownButtonTitle( dropdownTitle: string | undefined, buttonTitle: string ): string {
 	return ( dropdownTitle ? dropdownTitle + ': ' : '' ) + buttonTitle;
-}
-
-/**
- * # **The image style custom drop-down definition descriptor**
- *
- * This definition can be implemented in the {@link module:image/image~ImageConfig#toolbar image toolbar configuration}
- * to define a completely custom drop-down in the image toolbar.
- *
- * ```ts
- * ClassicEditor.create( editorElement, {
- * 	image: { toolbar: [
- * 			// One of the predefined drop-downs
- * 			'imageStyle:wrapText',
- * 		// Custom drop-down
- * 		{
- * 			name: 'imageStyle:customDropdown',
- * 			title: Custom drop-down title,
- * 			items: [ 'imageStyle:alignLeft', 'imageStyle:alignRight' ],
- * 			defaultItem: 'imageStyle:alignLeft'
- * 		}
- * 	] }
- * } );
- * ```
- *
- * **Note:** At the moment it is possible to populate the custom drop-down with only the buttons registered by the `ImageStyle` plugin.
- *
- * The defined drop-down will be registered
- * as the {@link module:ui/dropdown/dropdownview~DropdownView}
- * with the {@link module:ui/dropdown/button/splitbuttonview~SplitButtonView} under the provided name in the
- * {@link module:ui/componentfactory~ComponentFactory}
- */
-export interface ImageStyleDropdownDefinition {
-
-	/**
-	 * The unique name of the drop-down. It is recommended to precede it with the "imageStyle:" prefix
-	 * to avoid collision with the components' names registered by other plugins.
-	 */
-	name: string;
-
-	/**
-	 * The drop-down's title. It will be used as the split button label along with the title of the default item
-	 * in the following manner: "Custom drop-down title: Default item title".
-	 *
-	 * Setting `title` to one of
-	 * {@link module:image/imagestyle/imagestyleui~ImageStyleUI#localizedDefaultStylesTitles}
-	 * will automatically translate it to the language of the editor.
-	 */
-	title?: string;
-
-	/**
-	 * The list of the names of the buttons that will be placed in the drop-down's toolbar.
-	 * Each of the buttons has to be one of the {@link module:image/image~ImageConfig#styles default image style buttons}
-	 * or to be defined as the {@link module:image/imagestyle~ImageStyleOptionDefinition image styling option}.
-	 */
-	items: Array<string>;
-
-	/**
-	 * defaultItem The name of one of the buttons from the items list,
-	 * which will be used as a default button for the drop-down's split button.
-	 */
-	defaultItem: string;
- }
-
- declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ ImageStyleUI.pluginName ]: ImageStyleUI;
-	}
 }

@@ -1,9 +1,11 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals ClassicEditor, CKEditorPlugins, console, window, document */
+
+import { TOKEN_URL } from '@ckeditor/ckeditor5-ckbox/tests/_utils/ckbox-config.js';
 
 const customColorPalette = [
 	{
@@ -76,11 +78,11 @@ const customColorPalette = [
 	},
 	{
 		color: 'hsl(0, 0%, 62%)',
-		label: 'Grey'
+		label: 'Gray'
 	},
 	{
 		color: 'hsl(200, 18%, 46%)',
-		label: 'Blue Grey'
+		label: 'Blue Gray'
 	},
 	{
 		color: 'hsl(200, 18%, 100%)',
@@ -109,17 +111,25 @@ ClassicEditor
 			toolbar: [
 				'imageStyle:inline',
 				'imageStyle:block',
-				'imageStyle:side',
+				'imageStyle:wrapText',
 				'|',
 				'toggleImageCaption',
-				'imageTextAlternative'
+				'imageTextAlternative',
+				'|',
+				'ckboxImageEdit'
 			]
 		},
 		ui: {
 			viewportOffset: {
 				top: window.getViewportTopOffsetConfig()
 			}
-		}
+		},
+		ckbox: {
+			tokenUrl: TOKEN_URL,
+			allowExternalImagesEditing: [ /^data:/, 'origin', /ckbox/ ],
+			forceDemoLabel: true
+		},
+		licenseKey: 'GPL'
 	} )
 	.then( editor => {
 		window.editorStyling = editor;

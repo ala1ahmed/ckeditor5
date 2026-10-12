@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -9,21 +9,20 @@
 
 import {
 	Plugin,
-	type Editor,
-	type PluginDependencies
-} from 'ckeditor5/src/core';
+	type Editor
+} from 'ckeditor5/src/core.js';
 
 import type {
 	ViewDocumentKeyDownEvent,
 	Marker,
 	Position
-} from 'ckeditor5/src/engine';
+} from 'ckeditor5/src/engine.js';
 
 import {
 	ButtonView,
 	ContextualBalloon,
 	clickOutsideHandler
-} from 'ckeditor5/src/ui';
+} from 'ckeditor5/src/ui.js';
 
 import {
 	CKEditorError,
@@ -33,15 +32,15 @@ import {
 	keyCodes,
 	logWarning,
 	type PositionOptions
-} from 'ckeditor5/src/utils';
+} from 'ckeditor5/src/utils.js';
 
-import { TextWatcher, type TextWatcherMatchedEvent } from 'ckeditor5/src/typing';
+import { TextWatcher, type TextWatcherMatchedEvent } from 'ckeditor5/src/typing.js';
 
 import { debounce } from 'lodash-es';
 
-import MentionsView from './ui/mentionsview';
-import DomWrapperView from './ui/domwrapperview';
-import MentionListItemView from './ui/mentionlistitemview';
+import MentionsView from './ui/mentionsview.js';
+import DomWrapperView from './ui/domwrapperview.js';
+import MentionListItemView from './ui/mentionlistitemview.js';
 
 import type {
 	FeedCallback,
@@ -49,7 +48,7 @@ import type {
 	MentionFeedItem,
 	ItemRenderer,
 	MentionFeedObjectItem
-} from './mention';
+} from './mentionconfig.js';
 
 const VERTICAL_SPACING = 3;
 
@@ -97,15 +96,22 @@ export default class MentionUI extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'MentionUI' {
-		return 'MentionUI';
+	public static get pluginName() {
+		return 'MentionUI' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ContextualBalloon ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ ContextualBalloon ] as const;
 	}
 
 	/**
@@ -167,9 +173,7 @@ export default class MentionUI extends Plugin {
 		const feeds = editor.config.get( 'mention.feeds' )!;
 
 		for ( const mentionDescription of feeds ) {
-			const feed = mentionDescription.feed;
-
-			const marker = mentionDescription.marker;
+			const { feed, marker, dropdownLimit } = mentionDescription;
 
 			if ( !isValidMentionMarker( marker ) ) {
 				/**
@@ -179,7 +183,7 @@ export default class MentionUI extends Plugin {
 				 *
 				 * Incorrect markers: `'$$'`, `'[@'`.
 				 *
-				 * See {@link module:mention/mention~MentionConfig}.
+				 * See {@link module:mention/mentionconfig~MentionConfig}.
 				 *
 				 * @error mentionconfig-incorrect-marker
 				 * @param marker Configured marker
@@ -189,7 +193,7 @@ export default class MentionUI extends Plugin {
 
 			const feedCallback = typeof feed == 'function' ? feed.bind( this.editor ) : createFeedCallback( feed );
 			const itemRenderer = mentionDescription.itemRenderer;
-			const definition = { marker, feedCallback, itemRenderer };
+			const definition = { marker, feedCallback, itemRenderer, dropdownLimit };
 
 			this._mentionsConfigurations.set( marker, definition );
 		}
@@ -238,8 +242,10 @@ export default class MentionUI extends Plugin {
 		mentionsView.items.bindTo( this._items ).using( data => {
 			const { item, marker } = data;
 
+			const { dropdownLimit: markerDropdownLimit } = this._mentionsConfigurations.get( marker )!;
+
 			// Set to 10 by default for backwards compatibility. See: #10479
-			const dropdownLimit = this.editor.config.get( 'mention.dropdownLimit' ) || 10;
+			const dropdownLimit = markerDropdownLimit || this.editor.config.get( 'mention.dropdownLimit' ) || 10;
 
 			if ( mentionsView.items.length >= dropdownLimit ) {
 				return null;
@@ -304,10 +310,6 @@ export default class MentionUI extends Plugin {
 
 	/**
 	 * Requests a feed from a configured callbacks.
-	 *
-	 * @fires response
-	 * @fires discarded
-	 * @fires error
 	 */
 	private _requestFeed( marker: string, feedText: string ): void {
 		// @if CK_DEBUG_MENTION // console.log( '%c[Feed]%c Requesting for', 'color: blue', 'color: black', `"${ feedText }"` );
@@ -411,7 +413,7 @@ export default class MentionUI extends Plugin {
 
 			this._requestFeedDebounced( markerDefinition!.marker, feedText );
 
-			// @if CK_DEBUG_MENTION // console.groupEnd( '[TextWatcher] matched' );
+			// @if CK_DEBUG_MENTION // console.groupEnd();
 		} );
 
 		watcher.on( 'unmatched', () => {
@@ -546,6 +548,7 @@ export default class MentionUI extends Plugin {
 		const editing = editor.editing;
 		const domConverter = editing.view.domConverter;
 		const mapper = editing.mapper;
+		const uiLanguageDirection = editor.locale.uiLanguageDirection;
 
 		return {
 			target: () => {
@@ -573,7 +576,7 @@ export default class MentionUI extends Plugin {
 
 				return null;
 			},
-			positions: getBalloonPanelPositions( preferredPosition )
+			positions: getBalloonPanelPositions( preferredPosition, uiLanguageDirection )
 		};
 	}
 }
@@ -581,7 +584,10 @@ export default class MentionUI extends Plugin {
 /**
  * Returns the balloon positions data callbacks.
  */
-function getBalloonPanelPositions( preferredPosition: MentionsView['position'] ): PositionOptions['positions'] {
+function getBalloonPanelPositions(
+	preferredPosition: MentionsView['position'],
+	uiLanguageDirection: string
+): PositionOptions['positions'] {
 	const positions: Record<string, PositionOptions['positions'][0]> = {
 		// Positions the panel to the southeast of the caret rectangle.
 		'caret_se': ( targetRect: Rect ) => {
@@ -639,12 +645,17 @@ function getBalloonPanelPositions( preferredPosition: MentionsView['position'] )
 		];
 	}
 
-	// By default return all position callbacks.
-	return [
+	// By default, return all position callbacks ordered depending on the UI language direction.
+	return uiLanguageDirection !== 'rtl' ? [
 		positions.caret_se,
 		positions.caret_sw,
 		positions.caret_ne,
 		positions.caret_nw
+	] : [
+		positions.caret_sw,
+		positions.caret_se,
+		positions.caret_nw,
+		positions.caret_ne
 	];
 }
 
@@ -699,11 +710,17 @@ function getLastValidMarkerInText(
  */
 export function createRegExp( marker: string, minimumCharacters: number ): RegExp {
 	const numberOfCharacters = minimumCharacters == 0 ? '*' : `{${ minimumCharacters },}`;
-
 	const openAfterCharacters = env.features.isRegExpUnicodePropertySupported ? '\\p{Ps}\\p{Pi}"\'' : '\\(\\[{"\'';
 	const mentionCharacters = '.';
 
+	// I wanted to make an util out of it, but since this regexp uses "u" flag, it became difficult.
+	// When "u" flag is used, the regexp has "strict" escaping rules, i.e. if you try to escape a character that does not need
+	// to be escaped, RegExp() will throw. It made it difficult to write a generic util, because different characters are
+	// allowed in different context. For example, escaping "-" sometimes was correct, but sometimes it threw an error.
+	marker = marker.replace( /[.*+?^${}()\-|[\]\\]/g, '\\$&' );
+
 	// The pattern consists of 3 groups:
+	//
 	// - 0 (non-capturing): Opening sequence - start of the line, space or an opening punctuation character like "(" or "\"",
 	// - 1: The marker character,
 	// - 2: Mention input (taking the minimal length into consideration to trigger the UI),
@@ -711,6 +728,7 @@ export function createRegExp( marker: string, minimumCharacters: number ): RegEx
 	// The pattern matches up to the caret (end of string switch - $).
 	//               (0:      opening sequence       )(1:   marker  )(2:                typed mention              )$
 	const pattern = `(?:^|[ ${ openAfterCharacters }])([${ marker }])(${ mentionCharacters }${ numberOfCharacters })$`;
+
 	return new RegExp( pattern, 'u' );
 }
 
@@ -859,7 +877,7 @@ type RequestFeedDiscardedEvent = {
 };
 
 /**
- * Fired whenever the requested {@link module:mention/mention~MentionFeed#feed} promise fails with error.
+ * Fired whenever the requested {@link module:mention/mentionconfig~MentionFeed#feed} promise fails with error.
  */
 type RequestFeedErrorEvent = {
 	name: 'requestFeed:error';
@@ -870,6 +888,7 @@ type Definition = {
 	marker: string;
 	feedCallback: FeedCallback;
 	itemRenderer?: ItemRenderer;
+	dropdownLimit?: number;
 };
 
 type MarkerDefinition = {
@@ -878,9 +897,3 @@ type MarkerDefinition = {
 	pattern: RegExp;
 	position: number;
 };
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ MentionUI.pluginName ]: MentionUI;
-	}
-}

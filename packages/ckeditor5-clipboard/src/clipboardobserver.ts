@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,13 +7,13 @@
  * @module clipboard/clipboardobserver
  */
 
-import { EventInfo } from '@ckeditor/ckeditor5-utils';
+import { EventInfo, getRangeFromMouseEvent } from '@ckeditor/ckeditor5-utils';
 
 import {
 	DataTransfer,
 	DomEventObserver,
 	type DomEventData,
-	type View,
+	type EditingView,
 	type ViewDocumentFragment,
 	type ViewElement,
 	type ViewRange
@@ -49,7 +49,7 @@ export default class ClipboardObserver extends DomEventObserver<
 		'paste', 'copy', 'cut', 'drop', 'dragover', 'dragstart', 'dragend', 'dragenter', 'dragleave'
 	] as const;
 
-	constructor( view: View ) {
+	constructor( view: EditingView ) {
 		super( view );
 
 		const viewDocument = this.document;
@@ -69,7 +69,8 @@ export default class ClipboardObserver extends DomEventObserver<
 					dataTransfer: data.dataTransfer,
 					method: evt.name,
 					targetRanges,
-					target: data.target
+					target: data.target,
+					domEvent: data.domEvent
 				} );
 
 				// If CKEditor handled the input, do not bubble the original event any further.
@@ -91,7 +92,9 @@ export default class ClipboardObserver extends DomEventObserver<
 		};
 
 		if ( domEvent.type == 'drop' || domEvent.type == 'dragover' ) {
-			evtData.dropRange = getDropViewRange( this.view, domEvent as DragEvent );
+			const domRange = getRangeFromMouseEvent( domEvent as DragEvent );
+
+			evtData.dropRange = domRange && this.view.domConverter.domRangeToView( domRange );
 		}
 
 		this.fire( domEvent.type, domEvent, evtData );
@@ -114,34 +117,11 @@ export interface ClipboardEventData {
 	dropRange?: ViewRange | null;
 }
 
-function getDropViewRange( view: View, domEvent: DragEvent & { rangeParent?: Node; rangeOffset?: number } ) {
-	const domDoc = ( domEvent.target as Node ).ownerDocument!;
-	const x = domEvent.clientX;
-	const y = domEvent.clientY;
-	let domRange;
-
-	// Webkit & Blink.
-	if ( domDoc.caretRangeFromPoint && domDoc.caretRangeFromPoint( x, y ) ) {
-		domRange = domDoc.caretRangeFromPoint( x, y );
-	}
-	// FF.
-	else if ( domEvent.rangeParent ) {
-		domRange = domDoc.createRange();
-		domRange.setStart( domEvent.rangeParent, domEvent.rangeOffset! );
-		domRange.collapse( true );
-	}
-
-	if ( domRange ) {
-		return view.domConverter.domRangeToView( domRange );
-	}
-
-	return null;
-}
-
 /**
- * Fired as a continuation of the {@link #event:paste} and {@link #event:drop} events.
+ * Fired as a continuation of the {@link module:engine/view/document~Document#event:paste} and
+ * {@link module:engine/view/document~Document#event:drop} events.
  *
- * It is a part of the {@glink framework/guides/deep-dive/clipboard#input-pipeline clipboard input pipeline}.
+ * It is a part of the {@glink framework/deep-dive/clipboard#input-pipeline clipboard input pipeline}.
  *
  * This event carries a `dataTransfer` object which comes from the clipboard and whose content should be processed
  * and inserted into the editor.
@@ -154,7 +134,7 @@ function getDropViewRange( view: View, domEvent: DragEvent & { rangeParent?: Nod
  * @see module:clipboard/clipboardobserver~ClipboardObserver
  * @see module:clipboard/clipboard~Clipboard
  *
- * @eventName clipboardInput
+ * @eventName module:engine/view/document~Document#clipboardInput
  * @param data The event data.
  */
 export type ViewDocumentClipboardInputEvent = {
@@ -210,7 +190,7 @@ export interface ClipboardInputEventData {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName dragover
+ * @eventName module:engine/view/document~Document#dragover
  * @param data The event data.
  */
 export type ViewDocumentDragOverEvent = {
@@ -230,7 +210,7 @@ export type ViewDocumentDragOverEvent = {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName drop
+ * @eventName module:engine/view/document~Document#drop
  * @param data The event data.
  */
 export type ViewDocumentDropEvent = {
@@ -250,7 +230,7 @@ export type ViewDocumentDropEvent = {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName paste
+ * @eventName module:engine/view/document~Document#paste
  * @param {module:clipboard/clipboardobserver~ClipboardEventData} data The event data.
  */
 export type ViewDocumentPasteEvent = {
@@ -270,7 +250,7 @@ export type ViewDocumentPasteEvent = {
  *
  * @see module:clipboard/clipboardobserver~ClipboardObserver
  *
- * @eventName copy
+ * @eventName module:engine/view/document~Document#copy
  * @param data The event data.
  */
 export type ViewDocumentCopyEvent = {
@@ -290,7 +270,7 @@ export type ViewDocumentCopyEvent = {
  *
  * @see module:clipboard/clipboardobserver~ClipboardObserver
  *
- * @eventName cut
+ * @eventName module:engine/view/document~Document#cut
  * @param data The event data.
  */
 export type ViewDocumentCutEvent = {
@@ -299,9 +279,9 @@ export type ViewDocumentCutEvent = {
 };
 
 /**
- * Fired as a continuation of the {@link #event:dragover} event.
+ * Fired as a continuation of the {@link module:engine/view/document~Document#event:dragover} event.
  *
- * It is a part of the {@glink framework/guides/deep-dive/clipboard#input-pipeline clipboard input pipeline}.
+ * It is a part of the {@glink framework/deep-dive/clipboard#input-pipeline clipboard input pipeline}.
  *
  * This event carries a `dataTransfer` object which comes from the clipboard and whose content should be processed
  * and inserted into the editor.
@@ -314,7 +294,7 @@ export type ViewDocumentCutEvent = {
  * @see module:clipboard/clipboardobserver~ClipboardObserver
  * @see module:clipboard/clipboard~Clipboard
  *
- * @eventName dragging
+ * @eventName module:engine/view/document~Document#dragging
  * @param data The event data.
  */
 export type ViewDocumentDraggingEvent = {
@@ -358,7 +338,7 @@ export interface DraggingEventData {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName dragstart
+ * @eventName module:engine/view/document~Document#dragstart
  * @param data The event data.
  */
 export type ViewDocumentDragStartEvent = {
@@ -378,7 +358,7 @@ export type ViewDocumentDragStartEvent = {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName dragend
+ * @eventName module:engine/view/document~Document#dragend
  * @param data The event data.
  */
 export type ViewDocumentDragEndEvent = {
@@ -398,7 +378,7 @@ export type ViewDocumentDragEndEvent = {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName dragenter
+ * @eventName module:engine/view/document~Document#dragenter
  * @param data The event data.
  */
 export type ViewDocumentDragEnterEvent = {
@@ -418,7 +398,7 @@ export type ViewDocumentDragEnterEvent = {
  *
  * @see module:engine/view/document~Document#event:clipboardInput
  *
- * @eventName dragleave
+ * @eventName module:engine/view/document~Document#dragleave
  * @param data The event data.
  */
 export type ViewDocumentDragLeaveEvent = {

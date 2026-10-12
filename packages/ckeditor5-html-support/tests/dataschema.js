@@ -1,11 +1,11 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor';
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
-import DataSchema from '../src/dataschema';
+import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
+import DataSchema from '../src/dataschema.js';
 
 describe( 'DataSchema', () => {
 	let editor, dataSchema;
@@ -28,6 +28,14 @@ describe( 'DataSchema', () => {
 		return editor.destroy();
 	} );
 
+	it( 'should have `isOfficialPlugin` static flag set to `true`', () => {
+		expect( DataSchema.isOfficialPlugin ).to.be.true;
+	} );
+
+	it( 'should have `isPremiumPlugin` static flag set to `false`', () => {
+		expect( DataSchema.isPremiumPlugin ).to.be.false;
+	} );
+
 	describe( 'registerInlineElement()', () => {
 		it( 'should register proper definition', () => {
 			dataSchema.registerInlineElement( { model: 'htmlDef', view: 'def' } );
@@ -37,6 +45,25 @@ describe( 'DataSchema', () => {
 			expect( Array.from( result ) ).to.deep.equal( [ {
 				model: 'htmlDef',
 				view: 'def',
+				isInline: true
+			} ] );
+		} );
+
+		it( 'should register multiple definitions for the same model attribute', () => {
+			dataSchema.registerInlineElement( { model: 'htmlDef', view: 'def1' } );
+			dataSchema.registerInlineElement( { model: 'htmlDef', view: 'def2' } );
+
+			const result1 = dataSchema.getDefinitionsForView( 'def1' );
+			const result2 = dataSchema.getDefinitionsForView( 'def2' );
+
+			expect( Array.from( result1 ) ).to.deep.equal( [ {
+				model: 'htmlDef',
+				view: 'def1',
+				isInline: true
+			} ] );
+			expect( Array.from( result2 ) ).to.deep.equal( [ {
+				model: 'htmlDef',
+				view: 'def2',
 				isInline: true
 			} ] );
 		} );
@@ -129,6 +156,96 @@ describe( 'DataSchema', () => {
 			const result = dataSchema.getDefinitionsForView( 'def1' );
 
 			expect( Array.from( result ) ).to.deep.equal( getExpectedFakeDefinitions( 'def1' ) );
+		} );
+
+		it( 'should allow registering multiple view elements with a single model representation', () => {
+			dataSchema.registerBlockElement( {
+				view: 'def1',
+				model: 'htmlDef'
+			} );
+			dataSchema.registerBlockElement( {
+				view: 'def2',
+				model: 'htmlDef'
+			} );
+
+			const result1 = dataSchema.getDefinitionsForView( 'def1' );
+			const result2 = dataSchema.getDefinitionsForView( 'def2' );
+
+			expect( Array.from( result1 ) ).to.deep.equal( [
+				{
+					isBlock: true,
+					view: 'def1',
+					model: 'htmlDef'
+				}
+			] );
+			expect( Array.from( result2 ) ).to.deep.equal( [
+				{
+					isBlock: true,
+					view: 'def2',
+					model: 'htmlDef'
+				}
+			] );
+		} );
+
+		it( 'should allow registering multiple view elements with a single model representation and dependencies', () => {
+			dataSchema.registerBlockElement( {
+				view: 'def1',
+				model: 'htmlDef',
+				modelSchema: {
+					inheritAllFrom: 'htmlBase'
+				}
+			} );
+			dataSchema.registerBlockElement( {
+				view: 'def2',
+				model: 'htmlDef',
+				modelSchema: {
+					inheritAllFrom: 'htmlBase'
+				}
+			} );
+			dataSchema.registerBlockElement( {
+				model: 'htmlBase',
+				modelSchema: {
+					inheritAllFrom: '$block'
+				}
+			} );
+
+			const result1 = dataSchema.getDefinitionsForView( 'def1', true );
+			const result2 = dataSchema.getDefinitionsForView( 'def2', true );
+
+			expect( Array.from( result1 ) ).to.deep.equal( [
+				{
+					isBlock: true,
+					model: 'htmlBase',
+					modelSchema: {
+						inheritAllFrom: '$block'
+					}
+				},
+				{
+					isBlock: true,
+					view: 'def1',
+					model: 'htmlDef',
+					modelSchema: {
+						inheritAllFrom: 'htmlBase'
+					}
+				}
+			] );
+			expect( Array.from( result2 ) ).to.deep.equal( [
+				{
+					isBlock: true,
+					model: 'htmlBase',
+					modelSchema: {
+						inheritAllFrom: '$block'
+					}
+				},
+				{
+					isBlock: true,
+					view: 'def2',
+					model: 'htmlDef',
+					modelSchema: {
+						inheritAllFrom: 'htmlBase'
+					}
+				}
+			] );
 		} );
 
 		it( 'should allow resolving definitions by view name (string)', () => {
@@ -227,6 +344,45 @@ describe( 'DataSchema', () => {
 			expect( Array.from( dataSchema.getDefinitionsForView( 'viewName' ) ) ).to.deep.equal( [ {
 				model: 'modelName',
 				view: 'viewName',
+				paragraphLikeModel: 'htmlDivParagraph',
+				modelSchema: {
+					isSelectable: true
+				},
+				isBlock: true
+			} ] );
+		} );
+
+		it( 'should extend schema with new properties (multiple entries for the same model element)', () => {
+			dataSchema.registerBlockElement( {
+				view: 'viewName',
+				model: 'modelName'
+			} );
+			dataSchema.registerBlockElement( {
+				view: 'viewName2',
+				model: 'modelName'
+			} );
+
+			dataSchema.extendBlockElement( {
+				model: 'modelName',
+				paragraphLikeModel: 'htmlDivParagraph',
+				modelSchema: {
+					isSelectable: true
+				}
+			} );
+
+			expect( Array.from( dataSchema.getDefinitionsForView( 'viewName' ) ) ).to.deep.equal( [ {
+				model: 'modelName',
+				view: 'viewName',
+				paragraphLikeModel: 'htmlDivParagraph',
+				modelSchema: {
+					isSelectable: true
+				},
+				isBlock: true
+			} ] );
+
+			expect( Array.from( dataSchema.getDefinitionsForView( 'viewName2' ) ) ).to.deep.equal( [ {
+				model: 'modelName',
+				view: 'viewName2',
 				paragraphLikeModel: 'htmlDivParagraph',
 				modelSchema: {
 					isSelectable: true

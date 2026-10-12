@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,12 @@
  * @module font/fontsize/utils
  */
 
-import { CKEditorError } from 'ckeditor5/src/utils';
-import { type FontSizeOption } from '../fontsize';
+import { CKEditorError } from 'ckeditor5/src/utils.js';
+import { type FontSizeOption } from '../fontconfig.js';
 
 /**
- * Normalizes and translates the {@link module:font/fontsize~FontSizeConfig#options configuration options}
- * to the {@link module:font/fontsize~FontSizeOption} format.
+ * Normalizes and translates the {@link module:font/fontconfig~FontSizeConfig#options configuration options}
+ * to the {@link module:font/fontconfig~FontSizeOption} format.
  *
  * @param configuredOptions An array of options taken from the configuration.
  */
@@ -170,7 +170,7 @@ function isNumericalDefinition( definition: string | FontSizeOption ): boolean {
 			/**
 			 * Provided value as an option for {@link module:font/fontsize~FontSize} seems to invalid.
 			 *
-			 * See valid examples described in the {@link module:font/fontsize~FontSizeConfig#options plugin configuration}.
+			 * See valid examples described in the {@link module:font/fontconfig~FontSizeConfig#options plugin configuration}.
 			 *
 			 * @error font-size-invalid-definition
 			 */

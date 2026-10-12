@@ -1,13 +1,13 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import ModelTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/modeltesteditor';
-import LinkCommand from '../src/linkcommand';
-import ManualDecorator from '../src/utils/manualdecorator';
-import { setData, getData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
-import AutomaticDecorators from '../src/utils/automaticdecorators';
+import ModelTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/modeltesteditor.js';
+import LinkCommand from '../src/linkcommand.js';
+import ManualDecorator from '../src/utils/manualdecorator.js';
+import { setData, getData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
+import AutomaticDecorators from '../src/utils/automaticdecorators.js';
 
 describe( 'LinkCommand', () => {
 	let editor, model, command;
@@ -262,15 +262,12 @@ describe( 'LinkCommand', () => {
 				expect( command.value ).to.be.equal( 'foo' );
 			} );
 
-			// NOTE: The command value should most likely be "foo" but this requires a lot changes in refresh()
-			// because it relies on getSelectedElement()/getSelectedBlocks() and neither will return the inline widget
-			// in this case.
-			it( 'should not read the value from a selected linkable when a linked text follows it', () => {
+			it( 'should read the value from a selected linkable when a linked text follows it', () => {
 				setData( model,
 					'<paragraph>[<linkableInline linkHref="foo"></linkableInline><$text linkHref="bar">bar</$text>]</paragraph>'
 				);
 
-				expect( command.value ).to.be.undefined;
+				expect( command.value ).to.be.equal( 'foo' );
 			} );
 
 			it( 'should read the value from a selected text node and ignore a linkable', () => {
@@ -619,8 +616,8 @@ describe( 'LinkCommand', () => {
 	} );
 
 	describe( 'manual decorators', () => {
-		beforeEach( () => {
-			editor.destroy();
+		beforeEach( async () => {
+			await editor.destroy();
 			return ModelTestEditor.create()
 				.then( newEditor => {
 					editor = newEditor;
@@ -703,6 +700,24 @@ describe( 'LinkCommand', () => {
 
 				expect( getData( model ) ).to.equal( 'foo<$text linkHref="url">url</$text>[]bar' );
 			} );
+
+			it( 'should update content if href is equal to content', () => {
+				setData( model, '<$text linkHref="url">ur[]l</$text>' );
+
+				command.execute( 'url2', { linkIsFoo: true, linkIsBar: true, linkIsSth: true } );
+
+				expect( getData( model ) ).to
+					.equal( '<$text linkHref="url2" linkIsBar="true" linkIsFoo="true" linkIsSth="true">url2</$text>[]' );
+			} );
+
+			it( 'should not add new attributes if there are falsy when href is equal to content', () => {
+				setData( model, '<$text linkHref="url">ur[]l</$text>' );
+
+				command.execute( 'url2', { linkIsFoo: false, linkIsBar: false, linkIsSth: false } );
+
+				expect( getData( model ) ).to
+					.equal( '<$text linkHref="url2">url2</$text>[]' );
+			} );
 		} );
 
 		describe( 'range selection', () => {
@@ -751,6 +766,70 @@ describe( 'LinkCommand', () => {
 						'foo[<linkableInline linkHref="url" linkIsBar="true" linkIsFoo="true" linkIsSth="true"></linkableInline>]bar' +
 					'</paragraph>'
 				);
+			} );
+
+			it( 'should update content if href is equal to content', () => {
+				setData( model, '[<$text linkHref="url">url</$text>]' );
+
+				command.execute( 'url2', { linkIsFoo: true, linkIsBar: true, linkIsSth: true } );
+
+				expect( getData( model ) ).to
+					.equal( '[<$text linkHref="url2" linkIsBar="true" linkIsFoo="true" linkIsSth="true">url2</$text>]' );
+			} );
+
+			it( 'should not update content if href is equal to content but there is a non-link following in the selection', () => {
+				setData( model, '<paragraph>[<$text linkHref="url">url</$text>foo]</paragraph>' );
+
+				command.execute( 'url2', { linkIsFoo: true, linkIsBar: true, linkIsSth: true } );
+
+				expect( getData( model ) ).to
+					.equal(
+						'<paragraph>[<$text linkHref="url2" linkIsBar="true" linkIsFoo="true" linkIsSth="true">urlfoo</$text>]</paragraph>'
+					);
+			} );
+
+			it( 'should not update content if href is equal to content but there is a non-link preceding in the selection', () => {
+				setData( model, '<paragraph>[foo<$text linkHref="url">url</$text>]</paragraph>' );
+
+				command.execute( 'url2', { linkIsFoo: true, linkIsBar: true, linkIsSth: true } );
+
+				expect( getData( model ) ).to
+					.equal(
+						'<paragraph>[<$text linkHref="url2" linkIsBar="true" linkIsFoo="true" linkIsSth="true">foourl</$text>]</paragraph>'
+					);
+			} );
+
+			it( 'should not add new attributes if there are falsy when href is equal to content', () => {
+				setData( model, '[<$text linkHref="url">url</$text>]' );
+
+				command.execute( 'url2', { linkIsFoo: false, linkIsBar: false, linkIsSth: false } );
+
+				expect( getData( model ) ).to
+					.equal( '[<$text linkHref="url2">url2</$text>]' );
+			} );
+
+			it( 'should not update link which is equal its href if selection is on more than one element', () => {
+				setData( model,
+					'<paragraph>' +
+						'<$text linkHref="foo">[foo</$text>' +
+					'</paragraph>' +
+					'<paragraph>bar</paragraph>' +
+					'<paragraph>baz]</paragraph>'
+				);
+
+				command.execute( 'foooo' );
+
+				expect( getData( model ) ).to
+					.equal( '<paragraph>' +
+								'[<$text linkHref="foooo">foo</$text>' +
+							'</paragraph>' +
+							'<paragraph>' +
+								'<$text linkHref="foooo">bar</$text>' +
+							'</paragraph>' +
+							'<paragraph>' +
+								'<$text linkHref="foooo">baz</$text>]' +
+							'</paragraph>'
+					);
 			} );
 		} );
 

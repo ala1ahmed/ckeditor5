@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -9,52 +9,93 @@
 
 /* globals document */
 
-import Template from '../template';
-import ViewCollection from '../viewcollection';
+import Template from '../template.js';
+import ViewCollection from '../viewcollection.js';
+import type View from '../view.js';
 
 import { createElement, type Locale } from '@ckeditor/ckeditor5-utils';
 
-import type View from '../view';
-
 /**
- * This is a special {@link module:ui/viewcollection~ViewCollection} dedicated to elements that are detached
- * from the DOM structure of the editor, like panels, icons, etc.
+ * This is a special {@link module:ui/viewcollection~ViewCollection} dedicated to elements that are detached from the DOM structure of
+ * the editor, like floating panels, floating toolbars, dialogs, etc.
  *
- * The body collection is available in the {@link module:ui/editorui/editoruiview~EditorUIView#body `editor.ui.view.body`} property.
+ * The body collection is available under the {@link module:ui/editorui/editoruiview~EditorUIView#body `editor.ui.view.body`} property.
  * Any plugin can add a {@link module:ui/view~View view} to this collection.
- * These views will render in a container placed directly in the `<body>` element.
- * The editor will detach and destroy this collection when the editor will be {@link module:core/editor/editor~Editor#destroy destroyed}.
  *
- * If you need to control the life cycle of the body collection on your own, you can create your own instance of this class.
+ * All views added to a body collection render in a dedicated DOM container (`<div class="ck ck-body ...">...</div>`). All body collection
+ * containers render in a common shared (`<div class="ck-body-wrapper">...</div>`) in the DOM to limit the pollution of
+ * the `<body>` element. The resulting DOM structure is as follows:
  *
- * A body collection will render itself automatically in the DOM body element as soon as you call {@link ~BodyCollection#attachToDom}.
- * If you create multiple body collections, this class will create a special wrapper element in the DOM to limit the number of
- * elements created directly in the body and remove it when the last body collection will be
- * {@link ~BodyCollection#detachFromDom detached}.
+ * ```html
+ * <body>
+ * 	<!-- Content of the webpage... -->
  *
- * @extends module:ui/viewcollection~ViewCollection
+ * 	<!-- The shared wrapper for all body collection containers. -->
+ * 	<div class="ck-body-wrapper">
+ * 		<!-- The container of the first body collection instance. -->
+ * 		<div class="ck ck-body ...">
+ * 			<!-- View elements belonging to the first body collection -->
+ * 		</div>
+ *
+ * 		<!-- The container of the second body collection instance. -->
+ * 		<div class="ck ck-body ...">...</div>
+ *
+ * 		<!-- More body collection containers for the rest of instances... -->
+ * 	</div>
+ * </body>
+ * ```
+ *
+ * By default, the {@link module:ui/editorui/editoruiview~EditorUIView `editor.ui.view`} manages the life cycle of the
+ * {@link module:ui/editorui/editoruiview~EditorUIView#body `editor.ui.view.body`} collection, attaching and detaching it
+ * when the editor gets created or {@link module:core/editor/editor~Editor#destroy destroyed}.
+ *
+ * # Custom body collection instances
+ *
+ * Even though most editor instances come with a built-in body collection
+ * ({@link module:ui/editorui/editoruiview~EditorUIView#body `editor.ui.view.body`}), you can create your own instance of this
+ * class if you need to control their life cycle.
+ *
+ * The life cycle of a custom body collection must be handled manually by the developer using the dedicated API:
+ * * A body collection will render itself automatically in the DOM as soon as you call {@link ~BodyCollection#attachToDom}.
+ * * Calling {@link ~BodyCollection#detachFromDom} will remove the collection from the DOM.
+ *
+ * **Note**: The shared collection wrapper (`<div class="ck-body-wrapper">...</div>`) gets automatically removed from DOM when the
+ * last body collection is {@link ~BodyCollection#detachFromDom detached} and does not require any special handling.
  */
 export default class BodyCollection extends ViewCollection {
+	/**
+	 * The {@link module:core/editor/editor~Editor#locale editor's locale} instance.
+	 * See the view {@link module:ui/view~View#locale locale} property.
+	 */
 	public readonly locale: Locale;
 
+	/**
+	 * The element holding elements of the body collection.
+	 */
 	private _bodyCollectionContainer?: HTMLElement;
+
+	/**
+	 * The wrapper element that holds all of the {@link #_bodyCollectionContainer} elements.
+	 */
+	private static _bodyWrapper?: HTMLElement;
 
 	/**
 	 * Creates a new instance of the {@link module:ui/editorui/bodycollection~BodyCollection}.
 	 *
-	 * @param {module:utils/locale~Locale} locale The {@link module:core/editor/editor~Editor editor's locale} instance.
-	 * @param {Iterable.<module:ui/view~View>} [initialItems] The initial items of the collection.
+	 * @param locale The {@link module:core/editor/editor~Editor editor's locale} instance.
+	 * @param initialItems The initial items of the collection.
 	 */
 	constructor( locale: Locale, initialItems: Iterable<View> = [] ) {
 		super( initialItems );
 
-		/**
-		 * The {@link module:core/editor/editor~Editor#locale editor's locale} instance.
-		 * See the view {@link module:ui/view~View#locale locale} property.
-		 *
-		 * @member {module:utils/locale~Locale}
-		 */
 		this.locale = locale;
+	}
+
+	/**
+	 * The element holding elements of the body collection.
+	 */
+	public get bodyCollectionContainer(): HTMLElement | undefined {
+		return this._bodyCollectionContainer;
 	}
 
 	/**
@@ -62,12 +103,6 @@ export default class BodyCollection extends ViewCollection {
 	 * the body collection.
 	 */
 	public attachToDom(): void {
-		/**
-		 * The element holding elements of the body region.
-		 *
-		 * @protected
-		 * @member {HTMLElement} #_bodyCollectionContainer
-		 */
 		this._bodyCollectionContainer = new Template( {
 			tag: 'div',
 			attributes: {
@@ -77,19 +112,19 @@ export default class BodyCollection extends ViewCollection {
 					'ck-body',
 					'ck-rounded-corners'
 				],
-				dir: this.locale.uiLanguageDirection
+				dir: this.locale.uiLanguageDirection,
+				role: 'application'
 			},
 			children: this
 		} ).render() as HTMLElement;
 
-		let wrapper = document.querySelector( '.ck-body-wrapper' );
-
-		if ( !wrapper ) {
-			wrapper = createElement( document, 'div', { class: 'ck-body-wrapper' } );
-			document.body.appendChild( wrapper );
+		// Create a shared wrapper if there were none or the previous one got disconnected from DOM.
+		if ( !BodyCollection._bodyWrapper || !BodyCollection._bodyWrapper.isConnected ) {
+			BodyCollection._bodyWrapper = createElement( document, 'div', { class: 'ck-body-wrapper' } );
+			document.body.appendChild( BodyCollection._bodyWrapper );
 		}
 
-		wrapper.appendChild( this._bodyCollectionContainer );
+		BodyCollection._bodyWrapper.appendChild( this._bodyCollectionContainer );
 	}
 
 	/**
@@ -103,10 +138,9 @@ export default class BodyCollection extends ViewCollection {
 			this._bodyCollectionContainer.remove();
 		}
 
-		const wrapper = document.querySelector( '.ck-body-wrapper' );
-
-		if ( wrapper && wrapper.childElementCount == 0 ) {
-			wrapper.remove();
+		if ( BodyCollection._bodyWrapper && !BodyCollection._bodyWrapper.childElementCount ) {
+			BodyCollection._bodyWrapper.remove();
+			delete BodyCollection._bodyWrapper;
 		}
 	}
 }

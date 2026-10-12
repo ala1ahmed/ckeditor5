@@ -1,43 +1,40 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals ClassicEditor, console, window, document */
 
-import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config';
+import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config.js';
+import { TOKEN_URL } from '@ckeditor/ckeditor5-ckbox/tests/_utils/ckbox-config.js';
 
 ClassicEditor
 	.create( document.querySelector( '#snippet-read-only' ), {
 		cloudServices: CS_CONFIG,
 		toolbar: {
 			items: [
-				'exportPdf',
-				'exportWord',
-				'|',
-				'heading',
-				'|',
-				'bold',
-				'italic',
-				'link',
-				'numberedList',
-				'bulletedList',
-				'|',
-				'outdent',
-				'indent',
-				'|',
-				'uploadImage',
-				'blockQuote',
-				'insertTable',
-				'findAndReplace',
-				'undo',
-				'redo'
+				'exportPdf', 'exportWord', 'findAndReplace',
+				'|', 'undo', 'redo', '|', 'heading',
+				'|', 'bold', 'italic',
+				'|', 'link', 'insertImage', 'insertTable', 'mediaEmbed',
+				'|', 'bulletedList', 'numberedList', 'outdent', 'indent'
+			]
+		},
+		image: {
+			toolbar: [
+				'imageStyle:inline', 'imageStyle:block', 'imageStyle:wrapText', '|',
+				'toggleImageCaption', 'imageTextAlternative', '|', 'ckboxImageEdit'
 			]
 		},
 		ui: {
 			viewportOffset: {
 				top: window.getViewportTopOffsetConfig()
 			}
+		},
+		ckbox: {
+			tokenUrl: TOKEN_URL,
+			forceDemoLabel: true,
+			allowExternalImagesEditing: [ /^data:/, 'origin', /ckbox/ ]
 		},
 		exportPdf: {
 			stylesheets: [
@@ -60,7 +57,8 @@ ClassicEditor
 		exportWord: {
 			fileName: 'export-word-demo.docx',
 			tokenUrl: false
-		}
+		},
+		licenseKey: 'GPL'
 	} )
 	.then( editor => {
 		const button = document.querySelector( '#snippet-read-only-toggle' );

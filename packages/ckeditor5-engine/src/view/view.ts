@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,43 +7,49 @@
  * @module engine/view/view
  */
 
-import Document, { type ViewDocumentLayoutChangedEvent } from './document';
-import DowncastWriter from './downcastwriter';
-import Renderer from './renderer';
-import DomConverter from './domconverter';
-import Position, { type PositionOffset } from './position';
-import Range from './range';
+import Document, { type ViewDocumentLayoutChangedEvent } from './document.js';
+import DowncastWriter from './downcastwriter.js';
+import Renderer from './renderer.js';
+import DomConverter from './domconverter.js';
+import Position, { type PositionOffset } from './position.js';
+import Range from './range.js';
 import Selection, {
 	type PlaceOrOffset,
 	type Selectable,
 	type SelectionOptions
-} from './selection';
+} from './selection.js';
 
-import type { default as Observer, ObserverConstructor } from './observer/observer';
-import type { ViewDocumentSelectionChangeEvent } from './documentselection';
-import type { StylesProcessor } from './stylesmap';
-import type Element from './element';
-import type Node from './node';
-import type Item from './item';
+import type { default as Observer, ObserverConstructor } from './observer/observer.js';
+import type { ViewDocumentSelectionChangeEvent } from './documentselection.js';
+import type { StylesProcessor } from './stylesmap.js';
+import type Element from './element.js';
+import type { default as Node, ViewNodeChangeEvent } from './node.js';
+import type Item from './item.js';
 
-import KeyObserver from './observer/keyobserver';
-import FakeSelectionObserver from './observer/fakeselectionobserver';
-import MutationObserver from './observer/mutationobserver';
-import SelectionObserver from './observer/selectionobserver';
-import FocusObserver from './observer/focusobserver';
-import CompositionObserver from './observer/compositionobserver';
-import InputObserver from './observer/inputobserver';
-import ArrowKeysObserver from './observer/arrowkeysobserver';
-import TabObserver from './observer/tabobserver';
+import KeyObserver from './observer/keyobserver.js';
+import FakeSelectionObserver from './observer/fakeselectionobserver.js';
+import MutationObserver, { type ViewDocumentMutationsEvent } from './observer/mutationobserver.js';
+import SelectionObserver from './observer/selectionobserver.js';
+import FocusObserver, { type ViewDocumentBlurEvent } from './observer/focusobserver.js';
+import CompositionObserver from './observer/compositionobserver.js';
+import InputObserver from './observer/inputobserver.js';
+import ArrowKeysObserver from './observer/arrowkeysobserver.js';
+import TabObserver from './observer/tabobserver.js';
 
 import {
 	CKEditorError,
+	env,
 	ObservableMixin,
 	scrollViewportToShowTarget,
 	type ObservableChangeEvent
 } from '@ckeditor/ckeditor5-utils';
-import { injectUiElementHandling } from './uielement';
-import { injectQuirksHandling } from './filler';
+import { injectUiElementHandling } from './uielement.js';
+import { injectQuirksHandling } from './filler.js';
+
+import { cloneDeep } from 'lodash-es';
+
+type IfTrue<T> = T extends true ? true : never;
+type DomRange = globalThis.Range;
 
 /**
  * Editor's view controller class. Its main responsibility is DOM - View management for editing purposes, to provide
@@ -77,7 +83,7 @@ import { injectQuirksHandling } from './filler';
  * If you do not need full a DOM - view management, and only want to transform a tree of view elements to a tree of DOM
  * elements you do not need this controller. You can use the {@link module:engine/view/domconverter~DomConverter DomConverter} instead.
  */
-export default class View extends ObservableMixin() {
+export default class View extends /* #__PURE__ */ ObservableMixin() {
 	/**
 	 * Instance of the {@link module:engine/view/document~Document} associated with this view controller.
 	 */
@@ -113,10 +119,8 @@ export default class View extends ObservableMixin() {
 
 	/**
 	 * Instance of the {@link module:engine/view/renderer~Renderer renderer}.
-	 *
-	 * @internal
 	 */
-	public readonly _renderer: Renderer;
+	private readonly _renderer: Renderer;
 
 	/**
 	 * A DOM root attributes cache. It saves the initial values of DOM root attributes before the DOM element
@@ -176,6 +180,7 @@ export default class View extends ObservableMixin() {
 		this._writer = new DowncastWriter( this.document );
 
 		// Add default observers.
+		// Make sure that this list matches AlwaysRegisteredObservers type.
 		this.addObserver( MutationObserver );
 		this.addObserver( FocusObserver );
 		this.addObserver( SelectionObserver );
@@ -210,6 +215,30 @@ export default class View extends ObservableMixin() {
 		this.listenTo<ObservableChangeEvent>( this.document, 'change:isFocused', () => {
 			this._hasChangedSinceTheLastRendering = true;
 		} );
+
+		// Remove ranges from DOM selection if editor is blurred.
+		// See https://github.com/ckeditor/ckeditor5/issues/5753.
+		if ( env.isiOS ) {
+			this.listenTo<ViewDocumentBlurEvent>( this.document, 'blur', ( evt, data ) => {
+				const relatedViewElement = this.domConverter.mapDomToView( data.domEvent.relatedTarget as HTMLElement );
+
+				// Do not modify DOM selection if focus is moved to other editable of the same editor.
+				if ( !relatedViewElement ) {
+					this.domConverter._clearDomSelection();
+				}
+			} );
+		}
+
+		// Listen to external content mutations (directly in the DOM) and mark them to get verified by the renderer.
+		this.listenTo<ViewDocumentMutationsEvent>( this.document, 'mutations', ( evt, { mutations } ) => {
+			mutations.forEach( mutation => this._renderer.markToSync( mutation.type, mutation.node ) );
+		}, { priority: 'low' } );
+
+		// After all mutated nodes were marked to sync we can trigger view to DOM synchronization
+		// to make sure the DOM structure matches the view.
+		this.listenTo<ViewDocumentMutationsEvent>( this.document, 'mutations', () => {
+			this.forceRender();
+		}, { priority: 'lowest' } );
 	}
 
 	/**
@@ -250,7 +279,12 @@ export default class View extends ObservableMixin() {
 			if ( name === 'class' ) {
 				this._writer.addClass( value.split( ' ' ), viewRoot );
 			} else {
-				this._writer.setAttribute( name, value, viewRoot );
+				// There is a chance that some attributes have already been set on the view root before attaching
+				// the DOM root and should be preserved. This is a similar case to the "class" attribute except
+				// this time there is no workaround using a some low-level API.
+				if ( !viewRoot.hasAttribute( name ) ) {
+					this._writer.setAttribute( name, value, viewRoot );
+				}
 			}
 		}
 
@@ -275,10 +309,10 @@ export default class View extends ObservableMixin() {
 		this._renderer.markToSync( 'attributes', viewRoot );
 		this._renderer.domDocuments.add( domRoot.ownerDocument );
 
-		viewRoot.on( 'change:children', ( evt, node ) => this._renderer.markToSync( 'children', node ) );
-		viewRoot.on( 'change:attributes', ( evt, node ) => this._renderer.markToSync( 'attributes', node ) );
-		viewRoot.on( 'change:text', ( evt, node ) => this._renderer.markToSync( 'text', node ) );
-		viewRoot.on( 'change:isReadOnly', () => this.change( updateContenteditableAttribute ) );
+		viewRoot.on<ViewNodeChangeEvent>( 'change:children', ( evt, node ) => this._renderer.markToSync( 'children', node ) );
+		viewRoot.on<ViewNodeChangeEvent>( 'change:attributes', ( evt, node ) => this._renderer.markToSync( 'attributes', node ) );
+		viewRoot.on<ViewNodeChangeEvent>( 'change:text', ( evt, node ) => this._renderer.markToSync( 'text', node ) );
+		viewRoot.on<ObservableChangeEvent>( 'change:isReadOnly', () => this.change( updateContenteditableAttribute ) );
 
 		viewRoot.on( 'change', () => {
 			this._hasChangedSinceTheLastRendering = true;
@@ -310,6 +344,10 @@ export default class View extends ObservableMixin() {
 
 		this.domRoots.delete( name );
 		this.domConverter.unbindDomElement( domRoot );
+
+		for ( const observer of this._observers.values() ) {
+			observer.stopObserving( domRoot );
+		}
 	}
 
 	/**
@@ -355,6 +393,9 @@ export default class View extends ObservableMixin() {
 		return observer;
 	}
 
+	public getObserver<T extends ObserverConstructor>( ObserverConstructor: T ):
+		T extends AlwaysRegisteredObservers ? InstanceType<T> : InstanceType<T> | undefined;
+
 	/**
 	 * Returns observer of the given type or `undefined` if such observer has not been added yet.
 	 *
@@ -385,17 +426,63 @@ export default class View extends ObservableMixin() {
 
 	/**
 	 * Scrolls the page viewport and {@link #domRoots} with their ancestors to reveal the
-	 * caret, if not already visible to the user.
+	 * caret, **if not already visible to the user**.
+	 *
+	 * **Note**: Calling this method fires the {@link module:engine/view/view~ViewScrollToTheSelectionEvent} event that
+	 * allows custom behaviors.
+	 *
+	 * @param options Additional configuration of the scrolling behavior.
+	 * @param options.viewportOffset A distance between the DOM selection and the viewport boundary to be maintained
+	 * while scrolling to the selection (default is 20px). Setting this value to `0` will reveal the selection precisely at
+	 * the viewport boundary.
+	 * @param options.ancestorOffset A distance between the DOM selection and scrollable DOM root ancestor(s) to be maintained
+	 * while scrolling to the selection (default is 20px). Setting this value to `0` will reveal the selection precisely at
+	 * the scrollable ancestor(s) boundary.
+	 * @param options.alignToTop When set `true`, the DOM selection will be aligned to the top of the viewport if not already visible
+	 * (see `forceScroll` to learn more).
+	 * @param options.forceScroll When set `true`, the DOM selection will be aligned to the top of the viewport and scrollable ancestors
+	 * whether it is already visible or not. This option will only work when `alignToTop` is `true`.
 	 */
-	public scrollToTheSelection(): void {
+	public scrollToTheSelection<T extends boolean, U extends IfTrue<T>>( {
+		alignToTop,
+		forceScroll,
+		viewportOffset = 20,
+		ancestorOffset = 20
+	}: {
+		readonly viewportOffset?: number | { top: number; bottom: number; left: number; right: number };
+		readonly ancestorOffset?: number;
+		readonly alignToTop?: T;
+		readonly forceScroll?: U;
+	} = {} ): void {
 		const range = this.document.selection.getFirstRange();
 
-		if ( range ) {
-			scrollViewportToShowTarget( {
-				target: this.domConverter.viewRangeToDom( range ),
-				viewportOffset: 20
-			} );
+		if ( !range ) {
+			return;
 		}
+
+		// Clone to make sure properties like `viewportOffset` are not mutated in the event listeners.
+		const originalArgs = cloneDeep( { alignToTop, forceScroll, viewportOffset, ancestorOffset } );
+
+		if ( typeof viewportOffset === 'number' ) {
+			viewportOffset = {
+				top: viewportOffset,
+				bottom: viewportOffset,
+				left: viewportOffset,
+				right: viewportOffset
+			};
+		}
+
+		const options = {
+			target: this.domConverter.viewRangeToDom( range ),
+			viewportOffset,
+			ancestorOffset,
+			alignToTop,
+			forceScroll
+		};
+
+		this.fire<ViewScrollToTheSelectionEvent>( 'scrollToTheSelection', options, originalArgs );
+
+		scrollViewportToShowTarget( options );
 	}
 
 	/**
@@ -457,8 +544,9 @@ export default class View extends ObservableMixin() {
 			 * cause some unexpected behaviour and inconsistency between the DOM and the view.
 			 * This may be caused by:
 			 *
-			 * * calling {@link #change} or {@link #forceRender} during rendering process,
-			 * * calling {@link #change} or {@link #forceRender} inside of
+			 * * calling {@link module:engine/view/view~View#change} or {@link module:engine/view/view~View#forceRender} during rendering
+			 * process,
+			 * * calling {@link module:engine/view/view~View#change} or {@link module:engine/view/view~View#forceRender} inside of
 			 *   {@link module:engine/view/document~Document#registerPostFixer post-fixer function}.
 			 *
 			 * @error cannot-change-view-tree
@@ -495,7 +583,7 @@ export default class View extends ObservableMixin() {
 			return callbackResult;
 		} catch ( err: any ) {
 			// @if CK_DEBUG // throw err;
-			/* istanbul ignore next */
+			/* istanbul ignore next -- @preserve */
 			CKEditorError.rethrowUnexpectedError( err, this );
 		}
 	}
@@ -512,7 +600,7 @@ export default class View extends ObservableMixin() {
 	 */
 	public forceRender(): void {
 		this._hasChangedSinceTheLastRendering = true;
-		this.getObserver( FocusObserver )!.flush();
+		this.getObserver( FocusObserver ).flush();
 		this.change( () => {} );
 	}
 
@@ -595,11 +683,50 @@ export default class View extends ObservableMixin() {
 		return Range._createIn( element );
 	}
 
+	/**
+	 * Creates new {@link module:engine/view/selection~Selection} instance.
+	 *
+	 * ```ts
+	 * // Creates collapsed selection at the position of given item and offset.
+	 * const paragraph = view.createContainerElement( 'paragraph' );
+	 * const selection = view.createSelection( paragraph, offset );
+	 *
+	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
+	 * // first child of that element and ends after the last child of that element.
+	 * const selection = view.createSelection( paragraph, 'in' );
+	 *
+	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
+	 * // just after the item.
+	 * const selection = view.createSelection( paragraph, 'on' );
+	 * ```
+	 *
+	 * `Selection`'s factory method allow passing additional options (`backward`, `fake` and `label`) as the last argument.
+	 *
+	 * ```ts
+	 * // Creates backward selection.
+	 * const selection = view.createSelection( paragraph, 'in', { backward: true } );
+	 * ```
+	 *
+	 * Fake selection does not render as browser native selection over selected elements and is hidden to the user.
+	 * This way, no native selection UI artifacts are displayed to the user and selection over elements can be
+	 * represented in other way, for example by applying proper CSS class.
+	 *
+	 * Additionally fake's selection label can be provided. It will be used to describe fake selection in DOM
+	 * (and be  properly handled by screen readers).
+	 *
+	 * ```ts
+	 * // Creates fake selection with label.
+	 * const selection = view.createSelection( element, 'in', { fake: true, label: 'foo' } );
+	 * ```
+	 *
+	 * See also: {@link #createSelection:SELECTABLE `createSelection( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public createSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: SelectionOptions ): Selection;
-	public createSelection( selectable?: Exclude<Selectable, Node>, options?: SelectionOptions ): Selection;
 
 	/**
-	 Creates new {@link module:engine/view/selection~Selection} instance.
+	 * Creates new {@link module:engine/view/selection~Selection} instance.
 	 *
 	 * ```ts
 	 * // Creates empty selection without ranges.
@@ -623,18 +750,6 @@ export default class View extends ObservableMixin() {
 	 * // Creates selection at the given position.
 	 * const position = view.createPositionFromPath( root, path );
 	 * const selection = view.createSelection( position );
-	 *
-	 * // Creates collapsed selection at the position of given item and offset.
-	 * const paragraph = view.createContainerElement( 'paragraph' );
-	 * const selection = view.createSelection( paragraph, offset );
-	 *
-	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
-	 * // first child of that element and ends after the last child of that element.
-	 * const selection = view.createSelection( paragraph, 'in' );
-	 *
-	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
-	 * // just after the item.
-	 * const selection = view.createSelection( paragraph, 'on' );
 	 * ```
 	 *
 	 * `Selection`'s factory method allow passing additional options (`backward`, `fake` and `label`) as the last argument.
@@ -655,7 +770,13 @@ export default class View extends ObservableMixin() {
 	 * // Creates fake selection with label.
 	 * const selection = view.createSelection( range, { fake: true, label: 'foo' } );
 	 * ```
+	 *
+	 * See also: {@link #createSelection:NODE_OFFSET `createSelection( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public createSelection( selectable?: Exclude<Selectable, Node>, options?: SelectionOptions ): Selection;
+
 	public createSelection( ...args: ConstructorParameters<typeof Selection> ): Selection {
 		return new Selection( ...args );
 	}
@@ -705,9 +826,56 @@ export default class View extends ObservableMixin() {
  * balloon panel. If you wants to change view structure use
  * {@link module:engine/view/document~Document#registerPostFixer post-fixers}.
  *
- * @eventName render
+ * @eventName ~View#render
  */
 export type ViewRenderEvent = {
 	name: 'render';
 	args: [];
 };
+
+/**
+ * An event fired at the moment of {@link module:engine/view/view~View#scrollToTheSelection} being called. It
+ * carries two objects in its payload (`args`):
+ *
+ * * The first argument is the {@link module:engine/view/view~ViewScrollToTheSelectionEventData object containing data} that gets
+ *   passed down to the {@link module:utils/dom/scroll~scrollViewportToShowTarget} helper. If some event listener modifies it, it can
+ *   adjust the behavior of the scrolling (e.g. include additional `viewportOffset`).
+ * * The second argument corresponds to the original arguments passed to {@link module:utils/dom/scroll~scrollViewportToShowTarget}.
+ *   It allows listeners to re-execute the `scrollViewportToShowTarget()` method with its original arguments if there is such a need,
+ *   for instance, if the integration requires re–scrolling after certain interaction.
+ *
+ * @eventName ~View#scrollToTheSelection
+ */
+export type ViewScrollToTheSelectionEvent = {
+	name: 'scrollToTheSelection';
+	args: [
+		ViewScrollToTheSelectionEventData,
+		Parameters<View[ 'scrollToTheSelection' ]>[ 0 ]
+	];
+};
+
+/**
+ * An object passed down to the {@link module:utils/dom/scroll~scrollViewportToShowTarget} helper while calling
+ * {@link module:engine/view/view~View#scrollToTheSelection}.
+ */
+export type ViewScrollToTheSelectionEventData = {
+	target: DomRange;
+	viewportOffset: { top: number; bottom: number; left: number; right: number };
+	ancestorOffset: number;
+	alignToTop?: boolean;
+	forceScroll?: boolean;
+};
+
+/**
+ * Observers that are always registered.
+ */
+export type AlwaysRegisteredObservers =
+	| typeof MutationObserver
+	| typeof FocusObserver
+	| typeof SelectionObserver
+	| typeof KeyObserver
+	| typeof FakeSelectionObserver
+	| typeof CompositionObserver
+	| typeof ArrowKeysObserver
+	| typeof InputObserver
+	| typeof TabObserver;

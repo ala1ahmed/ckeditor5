@@ -1,20 +1,22 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import type { Command, Editor } from 'ckeditor5/src/core';
+import type { Command, Editor } from 'ckeditor5/src/core.js';
 
 import {
 	LiveRange,
 	type DocumentChangeEvent,
 	type Item,
 	type Text
-} from 'ckeditor5/src/engine';
+} from 'ckeditor5/src/engine.js';
 
-import { first } from 'ckeditor5/src/utils';
+import { first } from 'ckeditor5/src/utils.js';
 
-import type Autoformat from './autoformat';
+import type Autoformat from './autoformat.js';
+
+import type { Delete } from 'ckeditor5/src/typing.js';
 
 /**
  * The block autoformatting engine. It allows to format various block patterns. For example,
@@ -63,7 +65,7 @@ import type Autoformat from './autoformat';
  * from the beginning until the caret position.
  * @param callbackOrCommand The callback to execute or the command to run when the text is matched.
  * In case of providing the callback, it receives the following parameter:
- * * {Object} match RegExp.exec() result of matching the pattern to inserted text.
+ * * match RegExp.exec() result of matching the pattern to inserted text.
  */
 export default function blockAutoformatEditing(
 	editor: Editor,
@@ -170,7 +172,9 @@ export default function blockAutoformatEditing(
 			range.detach();
 
 			editor.model.enqueueChange( () => {
-				editor.plugins.get( 'Delete' ).requestUndoOnBackspace();
+				const deletePlugin: Delete = editor.plugins.get( 'Delete' );
+
+				deletePlugin.requestUndoOnBackspace();
 			} );
 		} );
 	} );

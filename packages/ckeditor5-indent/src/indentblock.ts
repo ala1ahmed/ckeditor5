@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,12 @@
  * @module indent/indentblock
  */
 
-import { Plugin, type Editor, type MultiCommand } from 'ckeditor5/src/core';
-import { addMarginRules, type AttributeDescriptor, type ViewElement } from 'ckeditor5/src/engine';
+import { Plugin, type Editor, type MultiCommand } from 'ckeditor5/src/core.js';
+import { addMarginRules, type AttributeDescriptor, type ViewElement } from 'ckeditor5/src/engine.js';
 
-import IndentBlockCommand from './indentblockcommand';
-import IndentUsingOffset from './indentcommandbehavior/indentusingoffset';
-import IndentUsingClasses from './indentcommandbehavior/indentusingclasses';
+import IndentBlockCommand from './indentblockcommand.js';
+import IndentUsingOffset from './indentcommandbehavior/indentusingoffset.js';
+import IndentUsingClasses from './indentcommandbehavior/indentusingclasses.js';
 import type { HeadingOption } from '@ckeditor/ckeditor5-heading';
 
 const DEFAULT_ELEMENTS = [ 'paragraph', 'heading1', 'heading2', 'heading3', 'heading4', 'heading5', 'heading6' ];
@@ -41,8 +41,15 @@ export default class IndentBlock extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'IndentBlock' {
-		return 'IndentBlock';
+	public static get pluginName() {
+		return 'IndentBlock' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -125,7 +132,12 @@ export default class IndentBlock extends Plugin {
 			},
 			model: {
 				key: 'blockIndent',
-				value: ( viewElement: ViewElement ) => viewElement.getStyle( marginProperty )
+				value: ( viewElement: ViewElement ) => {
+					// Do not indent block elements in Document Lists. See https://github.com/ckeditor/ckeditor5/issues/12466.
+					if ( !viewElement.is( 'element', 'li' ) ) {
+						return viewElement.getStyle( marginProperty );
+					}
+				}
 			}
 		} );
 
@@ -166,101 +178,5 @@ export default class IndentBlock extends Plugin {
 		}
 
 		this.editor.conversion.attributeToAttribute( definition );
-	}
-}
-
-/**
- * The configuration of the {@link module:indent/indentblock~IndentBlock block indentation feature}.
- *
- * Read more in {@link module:indent/indentblock~IndentBlockConfig}.
- */
-
-/**
- * The configuration of the block indentation feature.
- *
- * If no {@link module:indent/indentblock~IndentBlockConfig#classes} are set, the block indentation feature will use
- * {@link module:indent/indentblock~IndentBlockConfig#offset} and {@link module:indent/indentblock~IndentBlockConfig#unit} to
- * create indentation steps.
- *
- * ```ts
- * ClassicEditor
- * 	.create( editorElement, {
- * 		indentBlock: {
- * 			offset: 2,
- * 			unit: 'em'
- * 		}
- * 	} )
- * 	.then( ... )
- * 	.catch( ... );
- * ```
- *
- * Alternatively, the block indentation feature may set one of defined {@link module:indent/indentblock~IndentBlockConfig#classes} as
- * indentation steps:
- *
- * ```ts
- * ClassicEditor
- * 	.create( editorElement, {
- * 		indentBlock: {
- * 			classes: [
- * 				'indent-a', // The first step - smallest indentation.
- * 				'indent-b',
- * 				'indent-c',
- * 				'indent-d',
- * 				'indent-e' // The last step - biggest indentation.
- * 			]
- * 		}
- * 	} )
- * 	.then( ... )
- * 	.catch( ... );
- * ```
- *
- * In the example above only 5 indentation steps will be available.
- *
- * See {@link module:core/editor/editorconfig~EditorConfig all editor options}.
- */
-export interface IndentBlockConfig {
-
-	/**
-	 * The size of indentation {@link module:indent/indentblock~IndentBlockConfig#unit units} for each indentation step.
-	 *
-	 * @default 40
-	 */
-	offset?: number;
-
-	/**
-	 * The unit used for indentation {@link module:indent/indentblock~IndentBlockConfig#offset}.
-	 *
-	 * @default 'px'
-	 */
-	unit?: string;
-
-	/**
-	 * An optional list of classes to use for indenting the editor content. If not set or set to an empty array, no classes will be used.
-	 * The {@link module:indent/indentblock~IndentBlockConfig#unit `indentBlock.unit`} and
-	 * {@link module:indent/indentblock~IndentBlockConfig#offset `indentBlock.offset`} properties will be used instead.
-	 *
-	 * @default undefined
-	 */
-	classes?: Array<string>;
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ IndentBlock.pluginName ]: IndentBlock;
-	}
-
-	interface CommandsMap {
-		indentBlock: IndentBlockCommand;
-		outdentBlock: IndentBlockCommand;
-	}
-
-	interface EditorConfig {
-
-		/**
-		 * The configuration of the {@link module:indent/indentblock~IndentBlock block indentation feature}.
-		 *
-		 * Read more in {@link module:indent/indentblock~IndentBlockConfig}.
-		 */
-		indentBlock?: IndentBlockConfig;
 	}
 }

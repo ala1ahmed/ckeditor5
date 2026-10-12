@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,12 @@
  * @module image/imageinline
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
-import { Widget } from 'ckeditor5/src/widget';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { Widget } from 'ckeditor5/src/widget.js';
 
-import ImageTextAlternative from './imagetextalternative';
-import ImageInlineEditing from './image/imageinlineediting';
+import ImageTextAlternative from './imagetextalternative.js';
+import ImageInlineEditing from './image/imageinlineediting.js';
+import ImageInsertUI from './imageinsert/imageinsertui.js';
 
 import '../theme/image.css';
 
@@ -30,21 +31,21 @@ export default class ImageInline extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageInlineEditing, Widget, ImageTextAlternative ];
+	public static get requires() {
+		return [ ImageInlineEditing, Widget, ImageTextAlternative, ImageInsertUI ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageInline' {
-		return 'ImageInline';
+	public static get pluginName() {
+		return 'ImageInline' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 }
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ ImageInline.pluginName ]: ImageInline;
-	}
-}
-

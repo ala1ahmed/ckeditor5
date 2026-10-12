@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,10 +7,10 @@
  * @module undo/undoediting
  */
 
-import { Plugin, type Editor } from '@ckeditor/ckeditor5-core';
+import { Plugin } from '@ckeditor/ckeditor5-core';
 
-import UndoCommand, { type UndoCommandRevertEvent } from './undocommand';
-import RedoCommand from './redocommand';
+import UndoCommand, { type UndoCommandRevertEvent } from './undocommand.js';
+import RedoCommand from './redocommand.js';
 
 import type {
 	Batch,
@@ -21,50 +21,37 @@ import type {
  * The undo engine feature.
  *
  * It introduces the `'undo'` and `'redo'` commands to the editor.
- *
- * @extends module:core/plugin~Plugin
  */
 export default class UndoEditing extends Plugin {
+	/**
+	 * The command that manages the undo {@link module:engine/model/batch~Batch batches} stack (history).
+	 * Created and registered during the {@link #init feature initialization}.
+	 */
 	private _undoCommand!: UndoCommand;
+
+	/**
+	 * The command that manages the redo {@link module:engine/model/batch~Batch batches} stack (history).
+	 * Created and registered during the {@link #init feature initialization}.
+	 */
 	private _redoCommand!: RedoCommand;
-	private _batchRegistry: WeakSet<Batch>;
+
+	/**
+	 * Keeps track of which batches were registered in undo.
+	 */
+	private _batchRegistry = new WeakSet<Batch>();
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'UndoEditing' {
-		return 'UndoEditing';
+	public static get pluginName() {
+		return 'UndoEditing' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	constructor( editor: Editor ) {
-		super( editor );
-
-		/**
-		 * The command that manages the undo {@link module:engine/model/batch~Batch batches} stack (history).
-		 * Created and registered during the {@link #init feature initialization}.
-		 *
-		 * @private
-		 * @member {module:undo/undocommand~UndoCommand} #_undoCommand
-		 */
-
-		/**
-		 * The command that manages the redo {@link module:engine/model/batch~Batch batches} stack (history).
-		 * Created and registered during the {@link #init feature initialization}.
-		 *
-		 * @private
-		 * @member {module:undo/undocommand~UndoCommand} #_redoCommand
-		 */
-
-		/**
-		 * Keeps track of which batches were registered in undo.
-		 *
-		 * @private
-		 * @member {WeakSet.<module:engine/model/batch~Batch>}
-		 */
-		this._batchRegistry = new WeakSet();
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -72,6 +59,7 @@ export default class UndoEditing extends Plugin {
 	 */
 	public init(): void {
 		const editor = this.editor;
+		const t = editor.t;
 
 		// Create commands.
 		this._undoCommand = new UndoCommand( editor );
@@ -95,8 +83,8 @@ export default class UndoEditing extends Plugin {
 
 			const batch = operation.batch!;
 
-			const isRedoBatch = this._redoCommand._createdBatches.has( batch );
-			const isUndoBatch = this._undoCommand._createdBatches.has( batch );
+			const isRedoBatch = this._redoCommand.createdBatches.has( batch );
+			const isUndoBatch = this._undoCommand.createdBatches.has( batch );
 			const wasProcessed = this._batchRegistry.has( batch );
 
 			// Skip the batch if it was already processed.
@@ -129,16 +117,19 @@ export default class UndoEditing extends Plugin {
 		editor.keystrokes.set( 'CTRL+Z', 'undo' );
 		editor.keystrokes.set( 'CTRL+Y', 'redo' );
 		editor.keystrokes.set( 'CTRL+SHIFT+Z', 'redo' );
-	}
-}
 
-declare module '@ckeditor/ckeditor5-core' {
-	interface CommandsMap {
-		undo: UndoCommand;
-		redo: RedoCommand;
-	}
-
-	interface PluginsMap {
-		[ UndoEditing.pluginName ]: UndoEditing;
+		// Add the information about the keystrokes to the accessibility database.
+		editor.accessibility.addKeystrokeInfos( {
+			keystrokes: [
+				{
+					label: t( 'Undo' ),
+					keystroke: 'CTRL+Z'
+				},
+				{
+					label: t( 'Redo' ),
+					keystroke: [ [ 'CTRL+Y' ], [ 'CTRL+SHIFT+Z' ] ]
+				}
+			]
+		} );
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,11 @@
  * @module block-quote/blockquoteediting
  */
 
-import { Plugin, type PluginDependencies } from 'ckeditor5/src/core';
-import { Enter, type ViewDocumentEnterEvent } from 'ckeditor5/src/enter';
-import { Delete, type ViewDocumentDeleteEvent } from 'ckeditor5/src/typing';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { Enter, type ViewDocumentEnterEvent } from 'ckeditor5/src/enter.js';
+import { Delete, type ViewDocumentDeleteEvent } from 'ckeditor5/src/typing.js';
 
-import BlockQuoteCommand from './blockquotecommand';
+import BlockQuoteCommand from './blockquotecommand.js';
 
 /**
  * The block quote editing.
@@ -24,15 +24,22 @@ export default class BlockQuoteEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'BlockQuoteEditing' {
-		return 'BlockQuoteEditing';
+	public static get pluginName() {
+		return 'BlockQuoteEditing' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ Enter, Delete ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ Enter, Delete ] as const;
 	}
 
 	/**
@@ -105,12 +112,12 @@ export default class BlockQuoteEditing extends Plugin {
 
 		const viewDocument = this.editor.editing.view.document;
 		const selection = editor.model.document.selection;
-		const blockQuoteCommand = editor.commands.get( 'blockQuote' );
+		const blockQuoteCommand: BlockQuoteCommand = editor.commands.get( 'blockQuote' )!;
 
 		// Overwrite default Enter key behavior.
 		// If Enter key is pressed with selection collapsed in empty block inside a quote, break the quote.
 		this.listenTo<ViewDocumentEnterEvent>( viewDocument, 'enter', ( evt, data ) => {
-			if ( !selection.isCollapsed || !blockQuoteCommand!.value ) {
+			if ( !selection.isCollapsed || !blockQuoteCommand.value ) {
 				return;
 			}
 
@@ -142,15 +149,5 @@ export default class BlockQuoteEditing extends Plugin {
 				evt.stop();
 			}
 		}, { context: 'blockquote' } );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface CommandsMap {
-		blockQuote: BlockQuoteCommand;
-	}
-
-	interface PluginsMap {
-		[ BlockQuoteEditing.pluginName ]: BlockQuoteEditing;
 	}
 }

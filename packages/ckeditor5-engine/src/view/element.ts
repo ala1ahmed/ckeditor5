@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,15 @@
  * @module engine/view/element
  */
 
-import Node from './node';
-import Text from './text';
-import TextProxy from './textproxy';
+import Node from './node.js';
+import Text from './text.js';
+import TextProxy from './textproxy.js';
 import { isIterable, toArray, toMap, type ArrayOrItem } from '@ckeditor/ckeditor5-utils';
-import { default as Matcher, type MatcherPattern } from './matcher';
-import { default as StylesMap, type StyleValue } from './stylesmap';
+import { default as Matcher, type MatcherPattern } from './matcher.js';
+import { default as StylesMap, type StyleValue } from './stylesmap.js';
 
-import type Document from './document';
-import type Item from './item';
+import type Document from './document.js';
+import type Item from './item.js';
 
 // @if CK_DEBUG_ENGINE // const { convertMapToTags } = require( '../dev-utils/utils' );
 
@@ -720,7 +720,7 @@ export default class Element extends Node {
 	 * @internal
 	 * @fires change
 	 */
-	public _removeClass( className: string | Array<string> ): void {
+	public _removeClass( className: ArrayOrItem<string> ): void {
 		this._fireChange( 'attributes', this );
 
 		for ( const name of toArray( className ) ) {
@@ -740,6 +740,7 @@ export default class Element extends Node {
 	 * See {@link module:engine/view/stylesmap~StylesMap#set `StylesMap#set()`} for details.
 	 *
 	 * @see module:engine/view/downcastwriter~DowncastWriter#setStyle
+	 * @label KEY_VALUE
 	 * @internal
 	 * @param property Property name.
 	 * @param value Value to set.
@@ -762,6 +763,7 @@ export default class Element extends Node {
 	 * See {@link module:engine/view/stylesmap~StylesMap#set `StylesMap#set()`} for details.
 	 *
 	 * @see module:engine/view/downcastwriter~DowncastWriter#setStyle
+	 * @label OBJECT
 	 * @internal
 	 * @param properties Object with key - value pairs.
 	 * @fires change
@@ -829,29 +831,29 @@ export default class Element extends Node {
 	 */
 	public getFillerOffset?(): number | null;
 
-	// @if CK_DEBUG_ENGINE // printTree( level = 0) {
+	// @if CK_DEBUG_ENGINE // public printTree( level = 0 ): string {
 	// @if CK_DEBUG_ENGINE // 	let string = '';
 
-	// @if CK_DEBUG_ENGINE //	string += '\t'.repeat( level ) + `<${ this.name }${ convertMapToTags( this.getAttributes() ) }>`;
+	// @if CK_DEBUG_ENGINE // 	string += '\t'.repeat( level ) + `<${ this.name }${ convertMapToTags( this.getAttributes() ) }>`;
 
-	// @if CK_DEBUG_ENGINE //	for ( const child of this.getChildren() ) {
-	// @if CK_DEBUG_ENGINE //		if ( child.is( '$text' ) ) {
-	// @if CK_DEBUG_ENGINE //			string += '\n' + '\t'.repeat( level + 1 ) + child.data;
-	// @if CK_DEBUG_ENGINE //		} else {
-	// @if CK_DEBUG_ENGINE //			string += '\n' + child.printTree( level + 1 );
-	// @if CK_DEBUG_ENGINE //		}
-	// @if CK_DEBUG_ENGINE //	}
+	// @if CK_DEBUG_ENGINE // 	for ( const child of this.getChildren() as any ) {
+	// @if CK_DEBUG_ENGINE // 		if ( child.is( '$text' ) ) {
+	// @if CK_DEBUG_ENGINE // 			string += '\n' + '\t'.repeat( level + 1 ) + child.data;
+	// @if CK_DEBUG_ENGINE // 		} else {
+	// @if CK_DEBUG_ENGINE // 			string += '\n' + child.printTree( level + 1 );
+	// @if CK_DEBUG_ENGINE // 		}
+	// @if CK_DEBUG_ENGINE // 	}
 
-	// @if CK_DEBUG_ENGINE //	if ( this.childCount ) {
-	// @if CK_DEBUG_ENGINE //		string += '\n' + '\t'.repeat( level );
-	// @if CK_DEBUG_ENGINE //	}
+	// @if CK_DEBUG_ENGINE // 	if ( this.childCount ) {
+	// @if CK_DEBUG_ENGINE // 		string += '\n' + '\t'.repeat( level );
+	// @if CK_DEBUG_ENGINE // 	}
 
-	// @if CK_DEBUG_ENGINE //	string += `</${ this.name }>`;
+	// @if CK_DEBUG_ENGINE // 	string += `</${ this.name }>`;
 
-	// @if CK_DEBUG_ENGINE //	return string;
+	// @if CK_DEBUG_ENGINE // 	return string;
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // logTree() {
+	// @if CK_DEBUG_ENGINE // public logTree(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( this.printTree() );
 	// @if CK_DEBUG_ENGINE // }
 }
@@ -921,17 +923,17 @@ function normalize( document: Document, nodes: string | Item | Iterable<string |
 		nodes = [ nodes ];
 	}
 
-	// Array.from to enable .map() on non-arrays.
-	return Array.from( nodes )
-		.map( node => {
-			if ( typeof node == 'string' ) {
-				return new Text( document, node );
-			}
+	const normalizedNodes: Array<Node> = [];
 
-			if ( node instanceof TextProxy ) {
-				return new Text( document, node.data );
-			}
+	for ( const node of nodes ) {
+		if ( typeof node == 'string' ) {
+			normalizedNodes.push( new Text( document, node ) );
+		} else if ( node instanceof TextProxy ) {
+			normalizedNodes.push( new Text( document, node.data ) );
+		} else {
+			normalizedNodes.push( node );
+		}
+	}
 
-			return node;
-		} );
+	return normalizedNodes;
 }

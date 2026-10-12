@@ -1,51 +1,35 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals ClassicEditor, console, window, document, ListProperties */
 
-import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config';
+import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config.js';
+import { TOKEN_URL } from '@ckeditor/ckeditor5-ckbox/tests/_utils/ckbox-config.js';
 
 ClassicEditor
 	.create( document.querySelector( '#snippet-paste-from-office' ), {
 		extraPlugins: [ ListProperties ],
 		toolbar: {
 			items: [
-				'heading',
-				'|',
-				'fontSize',
-				'fontFamily',
-				'fontColor',
-				'fontBackgroundColor',
-				'|',
-				'bold',
-				'italic',
-				'underline',
-				'strikethrough',
-				'-',
-				'alignment',
-				'|',
-				'numberedList',
-				'bulletedList',
-				'|',
-				'outdent',
-				'indent',
-				'|',
-				'link',
-				'uploadImage',
-				'insertTable',
-				'horizontalLine',
-				'|',
-				'undo',
-				'redo'
-			],
-			shouldNotGroupWhenFull: true
+				'undo', 'redo', '|', 'heading',
+				'|', 'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor',
+				'|', 'bold', 'italic', 'underline', 'strikethrough',
+				'|', 'link', 'bookmark', 'insertImage', 'insertTable', 'mediaEmbed',
+				'|', 'alignment',
+				'|', 'bulletedList', 'numberedList', 'outdent', 'indent'
+			]
 		},
 		ui: {
 			viewportOffset: {
 				top: window.getViewportTopOffsetConfig()
 			}
+		},
+		ckbox: {
+			tokenUrl: TOKEN_URL,
+			allowExternalImagesEditing: [ /^data:/, 'origin', /ckbox/ ],
+			forceDemoLabel: true
 		},
 		image: {
 			toolbar: [
@@ -54,7 +38,9 @@ ClassicEditor
 				'imageStyle:breakText',
 				'|',
 				'toggleImageCaption',
-				'imageTextAlternative'
+				'imageTextAlternative',
+				'|',
+				'ckboxImageEdit'
 			]
 		},
 		heading: {
@@ -92,7 +78,8 @@ ClassicEditor
 			}
 		},
 		placeholder: 'Paste the content here to test the feature.',
-		cloudServices: CS_CONFIG
+		cloudServices: CS_CONFIG,
+		licenseKey: 'GPL'
 	} )
 	.then( editor => {
 		window.editor = editor;

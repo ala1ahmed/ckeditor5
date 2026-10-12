@@ -4,13 +4,13 @@
 			"name": "HTML embed",
 			"className": "HtmlEmbed",
 			"description": "Allows for embedding an arbitrary HTML snippet in the editor.",
-			"docs": "features/html-embed.html",
+			"docs": "features/html/html-embed.html",
 			"path": "src/htmlembed.js",
 			"uiComponents": [
 				{
 					"type": "Button",
 					"name": "htmlEmbed",
-					"iconPath": "theme/icons/html.svg"
+					"iconPath": "@ckeditor/ckeditor5-core/theme/icons/html.svg"
 				}
 			],
 			"htmlOutput": [

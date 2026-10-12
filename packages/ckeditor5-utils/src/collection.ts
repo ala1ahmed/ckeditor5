@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,10 +7,10 @@
  * @module utils/collection
  */
 
-import EmitterMixin from './emittermixin';
-import CKEditorError from './ckeditorerror';
-import uid from './uid';
-import isIterable from './isiterable';
+import EmitterMixin from './emittermixin.js';
+import CKEditorError from './ckeditorerror.js';
+import uid from './uid.js';
+import isIterable from './isiterable.js';
 
 /**
  * Collections are ordered sets of objects. Items in the collection can be retrieved by their indexes
@@ -24,7 +24,7 @@ import isIterable from './isiterable';
  *
  * @typeParam T The type of the collection element.
  */
-export default class Collection<T extends Record<string, any>> extends EmitterMixin() implements Iterable<T> {
+export default class Collection<T extends Record<string, any>> extends /* #__PURE__ */ EmitterMixin() implements Iterable<T> {
 	/**
 	 * The internal list of items in the collection.
 	 */
@@ -328,6 +328,18 @@ export default class Collection<T extends Record<string, any>> extends EmitterMi
 		ctx?: any
 	): Array<U> {
 		return this._items.map( callback, ctx );
+	}
+
+	/**
+	 * Performs the specified action for each item in the collection.
+	 *
+	 * @param ctx Context in which the `callback` will be called.
+	 */
+	public forEach(
+		callback: ( item: T, index: number ) => unknown,
+		ctx?: any
+	): void {
+		this._items.forEach( callback, ctx );
 	}
 
 	/**
@@ -753,7 +765,7 @@ export default class Collection<T extends Record<string, any>> extends EmitterMi
 /**
  * Fired when an item is added to the collection.
  *
- * @eventName add
+ * @eventName ~Collection#add
  * @param item The added item.
  * @param index An index where the addition occurred.
  */
@@ -765,7 +777,7 @@ export type CollectionAddEvent<T = any> = {
 /**
  * Fired when the collection was changed due to adding or removing items.
  *
- * @eventName change
+ * @eventName ~Collection#change
  * @param data Changed items.
  */
 export type CollectionChangeEvent<T = any> = {
@@ -797,7 +809,7 @@ export type CollectionChangeEventData<T = any> = {
 /**
  * Fired when an item is removed from the collection.
  *
- * @eventName remove
+ * @eventName ~Collection#remove
  * @param item The removed item.
  * @param index Index from which item was removed.
  */

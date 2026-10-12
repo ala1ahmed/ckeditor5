@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,30 +7,30 @@
  * @module engine/view/downcastwriter
  */
 
-import Position, { type PositionOffset } from './position';
-import Range from './range';
+import Position, { type PositionOffset } from './position.js';
+import Range from './range.js';
 import Selection, {
 	type PlaceOrOffset,
 	type Selectable,
 	type SelectionOptions
-} from './selection';
-import ContainerElement from './containerelement';
-import AttributeElement from './attributeelement';
-import EmptyElement from './emptyelement';
-import UIElement from './uielement';
-import RawElement from './rawelement';
+} from './selection.js';
+import ContainerElement from './containerelement.js';
+import AttributeElement from './attributeelement.js';
+import EmptyElement from './emptyelement.js';
+import UIElement from './uielement.js';
+import RawElement from './rawelement.js';
 import { CKEditorError, isIterable } from '@ckeditor/ckeditor5-utils';
-import DocumentFragment from './documentfragment';
-import Text from './text';
-import EditableElement from './editableelement';
+import DocumentFragment from './documentfragment.js';
+import Text from './text.js';
+import EditableElement from './editableelement.js';
 import { isPlainObject } from 'lodash-es';
 
-import type Document from './document';
-import type Node from './node';
-import type { default as Element, ElementAttributes } from './element';
-import type DomConverter from './domconverter';
-import type Item from './item';
-import type { SlotFilter } from '../conversion/downcasthelpers';
+import type Document from './document.js';
+import type Node from './node.js';
+import type { default as Element, ElementAttributes } from './element.js';
+import type DomConverter from './domconverter.js';
+import type Item from './item.js';
+import type { SlotFilter } from '../conversion/downcasthelpers.js';
 
 type DomDocument = globalThis.Document;
 type DomElement = globalThis.HTMLElement;
@@ -47,8 +47,8 @@ type DomElement = globalThis.HTMLElement;
  * To work with ordinary views (e.g. parsed from a pasted content) use the
  * {@link module:engine/view/upcastwriter~UpcastWriter upcast writer}.
  *
- * Read more about changing the view in the {@glink framework/guides/architecture/editing-engine#changing-the-view Changing the view}
- * section of the {@glink framework/guides/architecture/editing-engine Editing engine architecture} guide.
+ * Read more about changing the view in the {@glink framework/architecture/editing-engine#changing-the-view Changing the view}
+ * section of the {@glink framework/architecture/editing-engine Editing engine architecture} guide.
  */
 export default class DowncastWriter {
 	/**
@@ -65,7 +65,7 @@ export default class DowncastWriter {
 	/**
 	 * The slot factory used by the `elementToStructure` downcast helper.
 	 */
-	private _slotFactory: ( ( writer: DowncastWriter, modeOrFilter: string | SlotFilter ) => Element ) | null = null;
+	private _slotFactory: ( ( writer: DowncastWriter, modeOrFilter: 'children' | SlotFilter ) => Element ) | null = null;
 
 	/**
 	 * @param document The view document instance.
@@ -74,8 +74,53 @@ export default class DowncastWriter {
 		this.document = document;
 	}
 
+	/**
+	 * Sets {@link module:engine/view/documentselection~DocumentSelection selection's} ranges and direction to the
+	 * specified location based on the given {@link module:engine/view/selection~Selectable selectable}.
+	 *
+	 * Usage:
+	 *
+	 * ```ts
+	 * // Sets collapsed selection at the position of given item and offset.
+	 * const paragraph = writer.createContainerElement( 'p' );
+	 * writer.setSelection( paragraph, offset );
+	 * ```
+	 *
+	 * Creates a range inside an {@link module:engine/view/element~Element element} which starts before the first child of
+	 * that element and ends after the last child of that element.
+	 *
+	 * ```ts
+	 * writer.setSelection( paragraph, 'in' );
+	 * ```
+	 *
+	 * Creates a range on the {@link module:engine/view/item~Item item} which starts before the item and ends just after the item.
+	 *
+	 * ```ts
+	 * writer.setSelection( paragraph, 'on' );
+	 * ```
+	 *
+	 * `DowncastWriter#setSelection()` allow passing additional options (`backward`, `fake` and `label`) as the last argument.
+	 *
+	 * ```ts
+	 * // Sets selection as backward.
+	 * writer.setSelection( element, 'in', { backward: true } );
+	 *
+	 * // Sets selection as fake.
+	 * // Fake selection does not render as browser native selection over selected elements and is hidden to the user.
+	 * // This way, no native selection UI artifacts are displayed to the user and selection over elements can be
+	 * // represented in other way, for example by applying proper CSS class.
+	 * writer.setSelection( element, 'in', { fake: true } );
+	 *
+	 * // Additionally fake's selection label can be provided. It will be used to describe fake selection in DOM
+	 * // (and be  properly handled by screen readers).
+	 * writer.setSelection( element, 'in', { fake: true, label: 'foo' } );
+	 * ```
+	 *
+	 * See also: {@link #setSelection:SELECTABLE `setSelection( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public setSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: SelectionOptions ): void;
-	public setSelection( selectable: Exclude<Selectable, Node>, options?: SelectionOptions ): void;
 
 	/**
 	 * Sets {@link module:engine/view/documentselection~DocumentSelection selection's} ranges and direction to the
@@ -104,23 +149,6 @@ export default class DowncastWriter {
 	 * const position = writer.createPositionFromPath( root, path );
 	 * writer.setSelection( position );
 	 *
-	 * // Sets collapsed selection at the position of given item and offset.
-	 * const paragraph = writer.createContainerElement( 'p' );
-	 * writer.setSelection( paragraph, offset );
-	 * ```
-	 *
-	 * Creates a range inside an {@link module:engine/view/element~Element element} which starts before the first child of
- 	 * that element and ends after the last child of that element.
-	 *
-	 * ```ts
-	 * writer.setSelection( paragraph, 'in' );
-	 * ```
-	 *
-	 * Creates a range on the {@link module:engine/view/item~Item item} which starts before the item and ends just after the item.
-	 *
-	 * ```ts
-	 * writer.setSelection( paragraph, 'on' );
-	 *
 	 * // Removes all ranges.
 	 * writer.setSelection( null );
 	 * ```
@@ -141,7 +169,13 @@ export default class DowncastWriter {
 	 * // (and be  properly handled by screen readers).
 	 * writer.setSelection( range, { fake: true, label: 'foo' } );
 	 * ```
+	 *
+	 * See also: {@link #setSelection:NODE_OFFSET `setSelection( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public setSelection( selectable: Exclude<Selectable, Node>, options?: SelectionOptions ): void;
+
 	public setSelection( ...args: Parameters<Selection[ 'setTo' ]> ): void {
 		this.document.selection._setTo( ...args );
 	}
@@ -250,6 +284,7 @@ export default class DowncastWriter {
 	 * writer.createContainerElement( 'span', { class: 'placeholder' }, { renderUnsafeAttributes: [ 'foo' ] } );
 	 * ```
 	 *
+	 * @label WITHOUT_CHILDREN
 	 * @param name Name of the element.
 	 * @param attributes Elements attributes.
 	 * @param options Element's options.
@@ -280,6 +315,7 @@ export default class DowncastWriter {
 	 * ], { renderUnsafeAttributes: [ 'foo' ] } );
 	 * ```
 	 *
+	 * @label WITH_CHILDREN
 	 * @param name Name of the element.
 	 * @param attributes Elements attributes.
 	 * @param children A node or a list of nodes to be inserted into the created element.
@@ -458,8 +494,8 @@ export default class DowncastWriter {
 	 */
 	public createRawElement(
 		name: string,
-		attributes: ElementAttributes,
-		renderFunction: ( domElement: DomElement, domConverter: DomConverter ) => void,
+		attributes?: ElementAttributes,
+		renderFunction?: ( domElement: DomElement, domConverter: DomConverter ) => void,
 		options: {
 			renderUnsafeAttributes?: Array<string>;
 		} = {}
@@ -539,6 +575,7 @@ export default class DowncastWriter {
 	 * {@link module:engine/controller/datacontroller~DataController#addStyleProcessorRules a particular style processor rule is enabled}.
 	 * See {@link module:engine/view/stylesmap~StylesMap#set `StylesMap#set()`} for details.
 	 *
+	 * @label KEY_VALUE
 	 * @param property Property name.
 	 * @param value Value to set.
 	 * @param element Element to set styles on.
@@ -559,6 +596,7 @@ export default class DowncastWriter {
 	 * {@link module:engine/controller/datacontroller~DataController#addStyleProcessorRules a particular style processor rule is enabled}.
 	 * See {@link module:engine/view/stylesmap~StylesMap#set `StylesMap#set()`} for details.
 	 *
+	 * @label OBJECT
 	 * @param property Object with key - value pairs.
 	 * @param element Element to set styles on.
 	 */
@@ -1247,8 +1285,47 @@ export default class DowncastWriter {
 		return Range._createIn( element );
 	}
 
+	/**
+	 * Creates new {@link module:engine/view/selection~Selection} instance.
+	 *
+	 * ```ts
+	 * // Creates collapsed selection at the position of given item and offset.
+	 * const paragraph = writer.createContainerElement( 'p' );
+	 * const selection = writer.createSelection( paragraph, offset );
+	 *
+	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
+	 * // first child of that element and ends after the last child of that element.
+	 * const selection = writer.createSelection( paragraph, 'in' );
+	 *
+	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
+	 * // just after the item.
+	 * const selection = writer.createSelection( paragraph, 'on' );
+	 * ```
+	 *
+	 * `Selection`'s constructor allow passing additional options (`backward`, `fake` and `label`) as the last argument.
+	 *
+	 * ```ts
+	 * // Creates backward selection.
+	 * const selection = writer.createSelection( element, 'in', { backward: true } );
+	 * ```
+	 *
+	 * Fake selection does not render as browser native selection over selected elements and is hidden to the user.
+	 * This way, no native selection UI artifacts are displayed to the user and selection over elements can be
+	 * represented in other way, for example by applying proper CSS class.
+	 *
+	 * Additionally fake's selection label can be provided. It will be used to describe fake selection in DOM
+	 * (and be  properly handled by screen readers).
+	 *
+	 * ```ts
+	 * // Creates fake selection with label.
+	 * const selection = writer.createSelection( element, 'in', { fake: true, label: 'foo' } );
+	 * ```
+	 *
+	 * See also: {@link #createSelection:SELECTABLE `createSelection( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public createSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: SelectionOptions ): Selection;
-	public createSelection( selectable?: Exclude<Selectable, Node>, option?: SelectionOptions ): Selection;
 
 	/**
 	 * Creates new {@link module:engine/view/selection~Selection} instance.
@@ -1275,18 +1352,6 @@ export default class DowncastWriter {
 	 * // Creates selection at the given position.
 	 * const position = writer.createPositionFromPath( root, path );
 	 * const selection = writer.createSelection( position );
-	 *
-	 * // Creates collapsed selection at the position of given item and offset.
-	 * const paragraph = writer.createContainerElement( 'p' );
-	 * const selection = writer.createSelection( paragraph, offset );
-	 *
-	 * // Creates a range inside an {@link module:engine/view/element~Element element} which starts before the
-	 * // first child of that element and ends after the last child of that element.
-	 * const selection = writer.createSelection( paragraph, 'in' );
-	 *
-	 * // Creates a range on an {@link module:engine/view/item~Item item} which starts before the item and ends
-	 * // just after the item.
-	 * const selection = writer.createSelection( paragraph, 'on' );
 	 * ```
 	 *
 	 * `Selection`'s constructor allow passing additional options (`backward`, `fake` and `label`) as the last argument.
@@ -1307,7 +1372,13 @@ export default class DowncastWriter {
 	 * // Creates fake selection with label.
 	 * const selection = writer.createSelection( range, { fake: true, label: 'foo' } );
 	 * ```
+	 *
+	 * See also: {@link #createSelection:NODE_OFFSET `createSelection( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public createSelection( selectable?: Exclude<Selectable, Node>, option?: SelectionOptions ): Selection;
+
 	public createSelection( ...args: ConstructorParameters<typeof Selection> ): Selection {
 		return new Selection( ...args );
 	}
@@ -1360,7 +1431,7 @@ export default class DowncastWriter {
 	 * @internal
 	 * @param slotFactory The slot factory.
 	 */
-	public _registerSlotFactory( slotFactory: ( writer: DowncastWriter, modeOrFilter: string | SlotFilter ) => Element ): void {
+	public _registerSlotFactory( slotFactory: ( writer: DowncastWriter, modeOrFilter: 'children' | SlotFilter ) => Element ): void {
 		this._slotFactory = slotFactory;
 	}
 
@@ -1683,7 +1754,7 @@ export default class DowncastWriter {
 		const nodeBefore = newPosition.nodeBefore;
 		const nodeAfter = newPosition.nodeAfter;
 
-		if ( nodeBefore instanceof Text && nodeAfter instanceof Text ) {
+		if ( nodeBefore && nodeBefore.is( 'view:$text' ) && nodeAfter && nodeAfter.is( 'view:$text' ) ) {
 			return mergeTextNodes( nodeBefore, nodeAfter );
 		}
 
@@ -2197,7 +2268,7 @@ const validNodesToInsert = [ Text, AttributeElement, ContainerElement, EmptyElem
  */
 function validateNodesToInsert( nodes: Iterable<Node>, errorContext: Document ): void {
 	for ( const node of nodes ) {
-		if ( !validNodesToInsert.some( ( validNode => node instanceof validNode ) ) ) { // eslint-disable-line no-use-before-define
+		if ( !validNodesToInsert.some( validNode => node instanceof validNode ) ) {
 			/**
 			 * One of the nodes to be inserted is of an invalid type.
 			 *

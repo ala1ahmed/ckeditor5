@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,12 @@
  * @module alignment/alignmentediting
  */
 
-import { Plugin, type Editor } from 'ckeditor5/src/core';
-import type { AttributeDescriptor } from 'ckeditor5/src/engine';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import type { AttributeDescriptor } from 'ckeditor5/src/engine.js';
 
-import AlignmentCommand from './alignmentcommand';
-import { isDefault, isSupported, normalizeAlignmentOptions, supportedOptions } from './utils';
+import AlignmentCommand from './alignmentcommand.js';
+import { isDefault, isSupported, normalizeAlignmentOptions, supportedOptions } from './utils.js';
+import type { AlignmentFormat, SupportedOption } from './alignmentconfig.js';
 
 /**
  * The alignment editing feature. It introduces the {@link module:alignment/alignmentcommand~AlignmentCommand command} and adds
@@ -21,8 +22,15 @@ export default class AlignmentEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'AlignmentEditing' {
-		return 'AlignmentEditing';
+	public static get pluginName() {
+		return 'AlignmentEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -177,92 +185,4 @@ function buildClassDefinition( options: Array<AlignmentFormat> ) {
 	};
 
 	return definition;
-}
-
-/**
- * The configuration of the {@link module:alignment/alignment~Alignment alignment feature}.
- *
- * ```ts
- * ClassicEditor
- *   .create( editorElement, {
- *     alignment: {
- *       options: [ 'left', 'right' ]
- *     }
- *   } )
- *   .then( ... )
- *   .catch( ... );
- * ```
- *
- * See {@link module:core/editor/editorconfig~EditorConfig all editor configuration options}.
- */
-export type AlignmentConfig = {
-	options?: Array<SupportedOption | AlignmentFormat>;
-};
-
-/**
- * Available alignment options.
- *
- * The available options are: `'left'`, `'right'`, `'center'` and `'justify'`. Other values are ignored.
- *
- * **Note:** It is recommended to always use `'left'` or `'right'` as these are default values which the user should
- * normally be able to choose depending on the
- * {@glink features/ui-language#setting-the-language-of-the-content language of the editor content}.
- *
- * ```ts
- * ClassicEditor
- *   .create( editorElement, {
- *     alignment: {
- *       options: [ 'left', 'right' ]
- *     }
- *   } )
- *   .then( ... )
- *   .catch( ... );
- * ```
- *
- * By default the alignment is set inline using the `text-align` CSS property. To further customize the alignment,
- * you can provide names of classes for each alignment option using the `className` property.
- *
- * **Note:** Once you define the `className` property for one option, you need to specify it for all other options.
- *
- * ```ts
- * ClassicEditor
- *   .create( editorElement, {
- *     alignment: {
- *       options: [
- *         { name: 'left', className: 'my-align-left' },
- *         { name: 'right', className: 'my-align-right' }
- *       ]
- *     }
- *   } )
- *   .then( ... )
- *   .catch( ... );
- * ```
- *
- * See the demo of {@glink features/text-alignment#configuring-alignment-options custom alignment options}.
- */
-export type AlignmentFormat = {
-	name: SupportedOption;
-	className?: string;
-};
-
-export type SupportedOption = 'left' | 'right' | 'center' | 'justify';
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface CommandsMap {
-		alignment: AlignmentCommand;
-	}
-
-	interface PluginsMap {
-		[ AlignmentEditing.pluginName ]: AlignmentEditing;
-	}
-
-	interface EditorConfig {
-
-		/**
-		 * The configuration of the {@link module:alignment/alignment~Alignment alignment feature}.
-		 *
-		 * Read more in {@link module:alignment/alignment~AlignmentConfig}.
-		 */
-		alignment?: AlignmentConfig;
-	}
 }

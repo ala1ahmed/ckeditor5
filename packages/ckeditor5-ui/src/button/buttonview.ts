@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,74 +7,212 @@
  * @module ui/button/buttonview
  */
 
-import View from '../view';
-import IconView from '../icon/iconview';
+import View from '../view.js';
+import IconView from '../icon/iconview.js';
+
+import type { TemplateDefinition } from '../template.js';
+import type ViewCollection from '../viewcollection.js';
+import type { default as Button, ButtonExecuteEvent } from './button.js';
+import type ButtonLabel from './buttonlabel.js';
+import ButtonLabelView from './buttonlabelview.js';
 
 import {
 	env,
 	getEnvKeystrokeText,
 	uid,
-	type Locale
+	delay,
+	type Locale,
+	type DelayedFunc
 } from '@ckeditor/ckeditor5-utils';
 
 import '../../theme/components/button/button.css';
 
-import type { TemplateDefinition } from '../template';
-import type ViewCollection from '../viewcollection';
-import type { default as Button, ButtonExecuteEvent } from './button';
-
 /**
  * The button view class.
  *
- *		const view = new ButtonView();
+ * ```ts
+ * const view = new ButtonView();
  *
- *		view.set( {
- *			label: 'A button',
- *			keystroke: 'Ctrl+B',
- *			tooltip: true,
- *			withText: true
- *		} );
+ * view.set( {
+ * 	label: 'A button',
+ * 	keystroke: 'Ctrl+B',
+ * 	tooltip: true,
+ * 	withText: true
+ * } );
  *
- *		view.render();
+ * view.render();
  *
- *		document.body.append( view.element );
- *
- * @extends module:ui/view~View
- * @implements module:ui/button/button~Button
+ * document.body.append( view.element );
+ * ```
  */
-export default class ButtonView extends View implements Button {
+export default class ButtonView extends View<HTMLButtonElement> implements Button {
+	/**
+	 * Collection of the child views inside of the button {@link #element}.
+	 */
 	public readonly children: ViewCollection;
-	public readonly labelView: View;
-	public readonly iconView: IconView;
-	public readonly keystrokeView: View;
 
-	declare public class: string | undefined;
-	declare public labelStyle: string | undefined;
-	declare public icon: string | undefined;
-	declare public isEnabled: boolean;
-	declare public isOn: boolean;
-	declare public isVisible: boolean;
-	declare public isToggleable: boolean;
-	declare public keystroke: string | undefined;
-	declare public label: string | undefined;
-	declare public tabindex: number;
-	declare public tooltip: Button[ 'tooltip' ];
-	declare public tooltipPosition: Button[ 'tooltipPosition' ];
-	declare public type: Button[ 'type' ];
-	declare public withText: boolean;
-	declare public withKeystroke: boolean;
-	declare public _tooltipString: string;
+	/**
+	 * Label of the button view. Its text is configurable using the {@link #label label attribute}.
+	 *
+	 * If not configured otherwise in the `constructor()`, by default the label is an instance
+	 * of {@link module:ui/button/buttonlabelview~ButtonLabelView}.
+	 */
+	public readonly labelView: ButtonLabel;
+
+	/**
+	 * The icon view of the button. Will be added to {@link #children} when the
+	 * {@link #icon icon attribute} is defined.
+	 */
+	public readonly iconView: IconView;
+
+	/**
+	 * A view displaying the keystroke of the button next to the {@link #labelView label}.
+	 * Added to {@link #children} when the {@link #withKeystroke `withKeystroke` attribute}
+	 * is defined.
+	 */
+	public readonly keystrokeView: View;
 
 	/**
 	 * @inheritDoc
 	 */
-	constructor( locale?: Locale ) {
+	declare public class: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public labelStyle: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public icon: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public isEnabled: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public isOn: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public isVisible: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public isToggleable: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public keystroke: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public label: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public tabindex: number;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public tooltip: Button[ 'tooltip' ];
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public tooltipPosition: Button[ 'tooltipPosition' ];
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public type: Button[ 'type' ];
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public withText: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public withKeystroke: boolean;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public role: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public ariaLabel?: string | undefined;
+
+	/**
+	 * @inheritDoc
+	 */
+	declare public ariaLabelledBy: string | undefined;
+
+	/**
+	 * Aria-pressed attribute of element. It is calculated based on {@link #isToggleable isToggleable} and {@link #role}.
+	 * It's set to true if the button is on and the role is not checkable.
+	 *
+	 * @readonly
+	 * @internal
+	 */
+	declare public _ariaPressed: string | false;
+
+	/**
+	 * Aria-checked attribute of element. It is calculated based on {@link #isToggleable isToggleable} and {@link #role}.
+	 * It's set to true if the button is on and the role is checkable.
+	 *
+	 * @readonly
+	 * @internal
+	 */
+	declare public _ariaChecked: string | false;
+
+	/**
+	 * Tooltip of the button bound to the template.
+	 *
+	 * @see #tooltip
+	 * @see module:ui/button/buttonview~ButtonView#_getTooltipString
+	 * @internal
+	 * @observable
+	 */
+	declare public _tooltipString: string;
+
+	/**
+	 * Delayed focus function for focus handling in Safari.
+	 */
+	private _focusDelayed: DelayedFunc<() => void> | null = null;
+
+	/**
+	 * Creates an instance of the button view class.
+	 *
+	 * @param locale The {@link module:core/editor/editor~Editor#locale} instance.
+	 * @param labelView The instance of the button's label. If not provided, an instance of
+	 * {@link module:ui/button/buttonlabelview~ButtonLabelView} is used.
+	 */
+	constructor( locale?: Locale, labelView: ButtonLabel = new ButtonLabelView() ) {
 		super( locale );
 
 		const bind = this.bindTemplate;
 		const ariaLabelUid = uid();
 
 		// Implement the Button interface.
+		this.set( '_ariaPressed', false );
+		this.set( '_ariaChecked', false );
+		this.set( 'ariaLabel', undefined );
+		this.set( 'ariaLabelledBy', `ck-editor__aria-label_${ ariaLabelUid }` );
 		this.set( 'class', undefined );
 		this.set( 'labelStyle', undefined );
 		this.set( 'icon', undefined );
@@ -84,6 +222,7 @@ export default class ButtonView extends View implements Button {
 		this.set( 'isToggleable', false );
 		this.set( 'keystroke', undefined );
 		this.set( 'label', undefined );
+		this.set( 'role', undefined );
 		this.set( 'tabindex', -1 );
 		this.set( 'tooltip', false );
 		this.set( 'tooltipPosition', 's' );
@@ -91,56 +230,18 @@ export default class ButtonView extends View implements Button {
 		this.set( 'withText', false );
 		this.set( 'withKeystroke', false );
 
-		/**
-		 * Collection of the child views inside of the button {@link #element}.
-		 *
-		 * @readonly
-		 * @member {module:ui/viewcollection~ViewCollection}
-		 */
 		this.children = this.createCollection();
+		this.labelView = this._setupLabelView( labelView );
 
-		/**
-		 * Label of the button view. It is configurable using the {@link #label label attribute}.
-		 *
-		 * @readonly
-		 * @member {module:ui/view~View} #labelView
-		 */
-		this.labelView = this._createLabelView( ariaLabelUid );
-
-		/**
-		 * The icon view of the button. Will be added to {@link #children} when the
-		 * {@link #icon icon attribute} is defined.
-		 *
-		 * @readonly
-		 * @member {module:ui/icon/iconview~IconView} #iconView
-		 */
 		this.iconView = new IconView();
-
 		this.iconView.extendTemplate( {
 			attributes: {
 				class: 'ck-button__icon'
 			}
 		} );
 
-		/**
-		 * A view displaying the keystroke of the button next to the {@link #labelView label}.
-		 * Added to {@link #children} when the {@link #withKeystroke `withKeystroke` attribute}
-		 * is defined.
-		 *
-		 * @readonly
-		 * @member {module:ui/view/view~View} #keystrokeView
-		 */
 		this.keystrokeView = this._createKeystrokeView();
 
-		/**
-		 * Tooltip of the button bound to the template.
-		 *
-		 * @see #tooltip
-		 * @see #_getTooltipString
-		 * @private
-		 * @observable
-		 * @member {String|undefined} #_tooltipString
-		 */
 		this.bind( '_tooltipString' ).to(
 			this, 'tooltip',
 			this, 'label',
@@ -162,11 +263,14 @@ export default class ButtonView extends View implements Button {
 					bind.if( 'withText', 'ck-button_with-text' ),
 					bind.if( 'withKeystroke', 'ck-button_with-keystroke' )
 				],
+				role: bind.to( 'role' ),
 				type: bind.to( 'type', value => value ? value : 'button' ),
 				tabindex: bind.to( 'tabindex' ),
-				'aria-labelledby': `ck-editor__aria-label_${ ariaLabelUid }`,
+				'aria-checked': bind.to( '_ariaChecked' ),
+				'aria-pressed': bind.to( '_ariaPressed' ),
+				'aria-label': bind.to( 'ariaLabel' ),
+				'aria-labelledby': bind.to( 'ariaLabelledBy' ),
 				'aria-disabled': bind.if( 'isEnabled', true, value => !value ),
-				'aria-pressed': bind.to( 'isOn', value => this.isToggleable ? String( !!value ) : false ),
 				'data-cke-tooltip-text': bind.to( '_tooltipString' ),
 				'data-cke-tooltip-position': bind.to( 'tooltipPosition' )
 			},
@@ -188,12 +292,41 @@ export default class ButtonView extends View implements Button {
 			}
 		};
 
+		this.bind( '_ariaPressed' ).to(
+			this, 'isOn', this, 'isToggleable', this, 'role',
+			( isOn, isToggleable, role ) => {
+				if ( !isToggleable || isCheckableRole( role ) ) {
+					return false;
+				}
+
+				return String( !!isOn );
+			}
+		);
+
+		this.bind( '_ariaChecked' ).to(
+			this, 'isOn', this, 'isToggleable', this, 'role',
+			( isOn, isToggleable, role ) => {
+				if ( !isToggleable || !isCheckableRole( role ) ) {
+					return false;
+				}
+
+				return String( !!isOn );
+			}
+		);
+
 		// On Safari we have to force the focus on a button on click as it's the only browser
 		// that doesn't do that automatically. See #12115.
 		if ( env.isSafari ) {
-			template.on.mousedown = bind.to( evt => {
-				this.focus();
-				evt.preventDefault();
+			if ( !this._focusDelayed ) {
+				this._focusDelayed = delay( () => this.focus(), 0 );
+			}
+
+			template.on.mousedown = bind.to( () => {
+				this._focusDelayed!();
+			} );
+
+			template.on.mouseup = bind.to( () => {
+				this._focusDelayed!.cancel();
 			} );
 		}
 
@@ -226,34 +359,21 @@ export default class ButtonView extends View implements Button {
 	}
 
 	/**
-	 * Creates a label view instance and binds it with button attributes.
-	 *
-	 * @private
-	 * @param {String} ariaLabelUid The aria label UID.
-	 * @returns {module:ui/view~View}
+	 * @inheritDoc
 	 */
-	private _createLabelView( ariaLabelUid: string ) {
-		const labelView = new View();
-		const bind = this.bindTemplate;
+	public override destroy(): void {
+		if ( this._focusDelayed ) {
+			this._focusDelayed.cancel();
+		}
 
-		labelView.setTemplate( {
-			tag: 'span',
+		super.destroy();
+	}
 
-			attributes: {
-				class: [
-					'ck',
-					'ck-button__label'
-				],
-				style: bind.to( 'labelStyle' ),
-				id: `ck-editor__aria-label_${ ariaLabelUid }`
-			},
-
-			children: [
-				{
-					text: this.bindTemplate.to( 'label' )
-				}
-			]
-		} );
+	/**
+	 * Binds the label view instance it with button attributes.
+	 */
+	private _setupLabelView( labelView: ButtonLabelView ) {
+		labelView.bind( 'text', 'style', 'id' ).to( this, 'label', 'labelStyle', 'ariaLabelledBy' );
 
 		return labelView;
 	}
@@ -261,9 +381,6 @@ export default class ButtonView extends View implements Button {
 	/**
 	 * Creates a view that displays a keystroke next to a {@link #labelView label }
 	 * and binds it with button attributes.
-	 *
-	 * @private
-	 * @returns {module:ui/view~View}
 	 */
 	private _createKeystrokeView() {
 		const keystrokeView = new View();
@@ -292,13 +409,11 @@ export default class ButtonView extends View implements Button {
 	 * Gets the text for the tooltip from the combination of
 	 * {@link #tooltip}, {@link #label} and {@link #keystroke} attributes.
 	 *
-	 * @private
 	 * @see #tooltip
 	 * @see #_tooltipString
-	 * @param {Boolean|String|Function} tooltip Button tooltip.
-	 * @param {String} label Button label.
-	 * @param {String} keystroke Button keystroke.
-	 * @returns {String}
+	 * @param tooltip Button tooltip.
+	 * @param label Button label.
+	 * @param keystroke Button keystroke.
 	 */
 	private _getTooltipString(
 		tooltip: Button[ 'tooltip' ],
@@ -322,5 +437,23 @@ export default class ButtonView extends View implements Button {
 		}
 
 		return '';
+	}
+}
+
+/**
+ * Checks if `aria-checkbox` can be used with specified role.
+ */
+function isCheckableRole( role: string | undefined ) {
+	switch ( role ) {
+		case 'radio':
+		case 'checkbox':
+		case 'option':
+		case 'switch':
+		case 'menuitemcheckbox':
+		case 'menuitemradio':
+			return true;
+
+		default:
+			return false;
 	}
 }

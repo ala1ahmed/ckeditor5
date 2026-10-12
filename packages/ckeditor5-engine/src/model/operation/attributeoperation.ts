@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,15 @@
  * @module engine/model/operation/attributeoperation
  */
 
-import Operation from './operation';
-import { _setAttribute } from './utils';
-import Range from '../range';
+import Operation from './operation.js';
+import { _setAttribute } from './utils.js';
+import Range from '../range.js';
 
-import type Document from '../document';
+import type Document from '../document.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
 import { isEqual } from 'lodash-es';
+import type { Selectable } from '../selection.js';
 
 /**
  * Operation to change nodes' attribute.
@@ -89,6 +90,13 @@ export default class AttributeOperation extends Operation {
 		} else {
 			return 'changeAttribute';
 		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		return this.range.clone();
 	}
 
 	/**
@@ -184,7 +192,7 @@ export default class AttributeOperation extends Operation {
 	}
 
 	/**
-	 * Creates `AttributeOperation` object from deserilized object, i.e. from parsed JSON string.
+	 * Creates `AttributeOperation` object from deserialized object, i.e. from parsed JSON string.
 	 *
 	 * @param json Deserialized JSON object.
 	 * @param document Document on which this operation will be applied.
@@ -193,9 +201,9 @@ export default class AttributeOperation extends Operation {
 		return new AttributeOperation( Range.fromJSON( json.range, document ), json.key, json.oldValue, json.newValue, json.baseVersion );
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `AttributeOperation( ${ this.baseVersion } ): ` +
-	// @if CK_DEBUG_ENGINE //		`"${ this.key }": ${ JSON.stringify( this.oldValue ) }` +
-	// @if CK_DEBUG_ENGINE //		` -> ${ JSON.stringify( this.newValue ) }, ${ this.range }`;
+	// @if CK_DEBUG_ENGINE // 		`"${ this.key }": ${ JSON.stringify( this.oldValue ) }` +
+	// @if CK_DEBUG_ENGINE // 		` -> ${ JSON.stringify( this.newValue ) }, ${ this.range }`;
 	// @if CK_DEBUG_ENGINE // }
 }

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,12 +7,13 @@
  * @module word-count/wordcount
  */
 
-import { type DocumentChangeEvent } from 'ckeditor5/src/engine';
-import { Plugin, type Editor } from 'ckeditor5/src/core';
-import { Template, View } from 'ckeditor5/src/ui';
-import { env } from 'ckeditor5/src/utils';
+import { type DocumentChangeEvent } from 'ckeditor5/src/engine.js';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import { Template, View } from 'ckeditor5/src/ui.js';
+import { env } from 'ckeditor5/src/utils.js';
 
-import { modelElementToPlainText } from './utils';
+import { modelElementToPlainText } from './utils.js';
+import type { WordCountConfig } from './wordcountconfig.js';
 
 import { throttle, isElement } from 'lodash-es';
 
@@ -111,12 +112,12 @@ export default class WordCount extends Plugin {
 		Object.defineProperties( this, {
 			characters: {
 				get() {
-					return ( this.characters = this._getCharacters() );
+					return ( this.characters = this._getCharacters( this._getText() ) );
 				}
 			},
 			words: {
 				get() {
-					return ( this.words = this._getWords() );
+					return ( this.words = this._getWords( this._getText() ) );
 				}
 			}
 		} );
@@ -140,8 +141,15 @@ export default class WordCount extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'WordCount' {
-		return 'WordCount';
+	public static get pluginName() {
+		return 'WordCount' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -250,20 +258,32 @@ export default class WordCount extends Plugin {
 		return this._outputView.element!;
 	}
 
+	private _getText(): string {
+		let txt = '';
+
+		for ( const root of this.editor.model.document.getRoots() ) {
+			if ( txt !== '' ) {
+				// Add a delimiter, so words from each root are treated independently.
+				txt += '\n';
+			}
+
+			txt += modelElementToPlainText( root );
+		}
+
+		return txt;
+	}
+
 	/**
 	 * Determines the number of characters in the current editor's model.
 	 */
-	private _getCharacters(): number {
-		const txt = modelElementToPlainText( this.editor.model.document.getRoot()! );
-
+	private _getCharacters( txt: string ): number {
 		return txt.replace( /\n/g, '' ).length;
 	}
 
 	/**
 	 * Determines the number of words in the current editor's model.
 	 */
-	private _getWords(): number {
-		const txt = modelElementToPlainText( this.editor.model.document.getRoot()! );
+	private _getWords( txt: string ): number {
 		const detectedWords = txt.match( this._wordsMatchRegExp ) || [];
 
 		return detectedWords.length;
@@ -276,8 +296,9 @@ export default class WordCount extends Plugin {
 	 * @fires update
 	 */
 	private _refreshStats(): void {
-		const words = this.words = this._getWords();
-		const characters = this.characters = this._getCharacters();
+		const txt = this._getText();
+		const words = this.words = this._getWords( txt );
+		const characters = this.characters = this._getCharacters( txt );
 
 		this.fire<WordCountUpdateEvent>( 'update', {
 			words,
@@ -287,115 +308,11 @@ export default class WordCount extends Plugin {
 }
 
 /**
- * An event fired after {@link #words} and {@link #characters} are updated.
+ * An event fired after {@link ~WordCount#words} and {@link ~WordCount#characters} are updated.
  *
- * @eventName update
+ * @eventName ~WordCount#update
  */
 export type WordCountUpdateEvent = {
 	name: 'update';
 	args: [ { words: number; characters: number } ];
 };
-
-/**
- * The configuration of the word count feature.
- *
- * ```ts
- * ClassicEditor
- * 	.create( {
- * 		wordCount: ... // Word count feature configuration.
- * 	} )
- * 	.then( ... )
- * 	.catch( ... );
- * ```
- *
- * See {@link module:core/editor/editorconfig~EditorConfig all editor options}.
- */
-export interface WordCountConfig {
-
-	/**
-	 * This option allows for hiding the word counter. The element obtained through
-	 * {@link module:word-count/wordcount~WordCount#wordCountContainer} will only preserve
-	 * the characters part. Word counter is displayed by default when this configuration option is not defined.
-	 *
-	 * ```ts
-	 * const wordCountConfig = {
-	 * 	displayWords: false
-	 * };
-	 * ```
-	 *
-	 * The configuration above will result in the following container:
-	 *
-	 * ```html
-	 * <div class="ck ck-word-count">
-	 * 	<div class="ck-word-count__characters">Characters: 28</div>
-	 * </div>
-	 * ```
-	 */
-	displayWords?: boolean;
-
-	/**
-	 * This option allows for hiding the character counter. The element obtained through
-	 * {@link module:word-count/wordcount~WordCount#wordCountContainer} will only preserve
-	 * the words part. Character counter is displayed by default when this configuration option is not defined.
-	 *
-	 * ```ts
-	 * const wordCountConfig = {
-	 * 	displayCharacters: false
-	 * };
-	 * ```
-	 *
-	 * The configuration above will result in the following container:
-	 *
-	 * ```html
-	 * <div class="ck ck-word-count">
-	 * 	<div class="ck-word-count__words">Words: 4</div>
-	 * </div>
-	 * ```
-	 */
-	displayCharacters?: boolean;
-
-	/**
-	 * This configuration takes a function that is executed whenever the word count plugin updates its values.
-	 * This function is called with one argument, which is an object with the `words` and `characters` keys containing
-	 * the number of detected words and characters in the document.
-	 *
-	 * ```ts
-	 * const wordCountConfig = {
-	 * 	onUpdate: function( stats ) {
-	 * 		doSthWithWordNumber( stats.words );
-	 * 		doSthWithCharacterNumber( stats.characters );
-	 * 	}
-	 * };
-	 * ```
-	 */
-	onUpdate?: ( data: { words: number; characters: number } ) => void;
-
-	/**
-	 * Allows for providing the HTML element that the
-	 * {@link module:word-count/wordcount~WordCount#wordCountContainer word count container} will be appended to automatically.
-	 *
-	 * ```ts
-	 * const wordCountConfig = {
-	 * 	container: document.getElementById( 'container-for-word-count' );
-	 * };
-	 * ```
-	 */
-	container?: HTMLElement;
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ WordCount.pluginName ]: WordCount;
-	}
-
-	interface EditorConfig {
-
-		/**
-		 * The configuration of the word count feature.
-		 * It is introduced by the {@link module:word-count/wordcount~WordCount} feature.
-		 *
-		 * Read more in {@link module:word-count/wordcount~WordCountConfig}.
-		 */
-		wordCount?: WordCountConfig;
-	}
-}

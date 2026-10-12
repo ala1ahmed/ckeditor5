@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,16 @@
  * @module engine/model/operation/insertoperation
  */
 
-import Operation from './operation';
-import Position from '../position';
-import NodeList from '../nodelist';
-import MoveOperation from './moveoperation';
-import { _insert, _normalizeNodes, type NodeSet } from './utils';
-import Text from '../text';
-import Element from '../element';
+import Operation from './operation.js';
+import Position from '../position.js';
+import NodeList from '../nodelist.js';
+import MoveOperation from './moveoperation.js';
+import { _insert, _normalizeNodes, type NodeSet } from './utils.js';
+import Text from '../text.js';
+import Element from '../element.js';
+import type { Selectable } from '../selection.js';
 
-import type Document from '../document';
+import type Document from '../document.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
 
@@ -73,6 +74,13 @@ export default class InsertOperation extends Operation {
 	 */
 	public get howMany(): number {
 		return this.nodes.maxOffset;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		return this.position.clone();
 	}
 
 	/**
@@ -152,7 +160,7 @@ export default class InsertOperation extends Operation {
 	}
 
 	/**
-	 * Creates `InsertOperation` object from deserilized object, i.e. from parsed JSON string.
+	 * Creates `InsertOperation` object from deserialized object, i.e. from parsed JSON string.
 	 *
 	 * @param json Deserialized JSON object.
 	 * @param document Document on which this operation will be applied.
@@ -176,9 +184,9 @@ export default class InsertOperation extends Operation {
 		return insert;
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	const nodeString = this.nodes.length > 1 ? `[ ${ this.nodes.length } ]` : this.nodes.getNode( 0 );
 
-	// @if CK_DEBUG_ENGINE //	return `InsertOperation( ${ this.baseVersion } ): ${ nodeString } -> ${ this.position }`;
+	// @if CK_DEBUG_ENGINE // 	return `InsertOperation( ${ this.baseVersion } ): ${ nodeString } -> ${ this.position }`;
 	// @if CK_DEBUG_ENGINE // }
 }

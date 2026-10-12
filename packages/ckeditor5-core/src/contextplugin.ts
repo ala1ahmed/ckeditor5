@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -15,11 +15,11 @@ import {
 	type LocaleTranslate
 } from '@ckeditor/ckeditor5-utils';
 
-import type Editor from './editor/editor';
-import type { EditorConfig } from './editor/editorconfig';
-import type Context from './context';
-import type { PluginDependencies, PluginInterface } from './plugin';
-import type PluginCollection from './plugincollection';
+import type Editor from './editor/editor.js';
+import type { EditorConfig } from './editor/editorconfig.js';
+import type Context from './context.js';
+import type { PluginDependencies, PluginInterface } from './plugin.js';
+import type PluginCollection from './plugincollection.js';
 
 /**
  * The base class for {@link module:core/context~Context} plugin classes.
@@ -34,27 +34,19 @@ import type PluginCollection from './plugincollection';
  * * A context plugin can require another context plugin.
  * * An {@link module:core/plugin~Plugin editor plugin} can require a context plugin.
  * * A context plugin MUST NOT require an {@link module:core/plugin~Plugin editor plugin}.
- *
- * @implements module:core/plugin~PluginInterface
- * @mixes module:utils/observablemixin~ObservableMixin
  */
-export default class ContextPlugin extends ObservableMixin() implements PluginInterface {
+export default class ContextPlugin extends /* #__PURE__ */ ObservableMixin() implements PluginInterface {
+	/**
+	 * The context or editor instance.
+	 */
 	public readonly context: ContextInterface;
 
 	/**
 	 * Creates a new plugin instance.
-	 *
-	 * @param {module:core/context~Context|module:core/editor/editor~Editor} context
 	 */
 	constructor( context: Context | Editor ) {
 		super();
 
-		/**
-		 * The context instance.
-		 *
-		 * @readonly
-		 * @type {module:core/context~Context|module:core/editor/editor~Editor}
-		 */
 		this.context = context as ContextInterface;
 	}
 
@@ -71,8 +63,25 @@ export default class ContextPlugin extends ObservableMixin() implements PluginIn
 	public static get isContextPlugin(): true {
 		return true;
 	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get isOfficialPlugin(): boolean {
+		return false;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get isPremiumPlugin(): boolean {
+		return false;
+	}
 }
 
+/**
+ * The common interface of {@link module:core/context~Context} and {@link module:core/editor/editor~Editor}.
+ */
 export interface ContextInterface {
 	config: Config<Omit<EditorConfig, 'plugins' | 'substitutePlugins' | 'removePlugins' | 'extraPlugins'>>;
 	plugins: PluginCollection<Context | Editor>;

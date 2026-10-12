@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -10,16 +10,15 @@
 import {
 	Plugin,
 	PendingActions,
-	type PluginDependencies,
 	type Editor,
 	type PendingAction,
 	type EditorDestroyEvent,
 	type EditorReadyEvent
-} from 'ckeditor5/src/core';
+} from 'ckeditor5/src/core.js';
 
-import { DomEmitterMixin, type DomEmitter } from 'ckeditor5/src/utils';
+import { DomEmitterMixin, type DomEmitter } from 'ckeditor5/src/utils.js';
 
-import type { DocumentChangeEvent } from 'ckeditor5/src/engine';
+import type { DocumentChangeEvent } from 'ckeditor5/src/engine.js';
 
 import { debounce, type DebouncedFunc } from 'lodash-es';
 
@@ -49,10 +48,9 @@ import { debounce, type DebouncedFunc } from 'lodash-es';
  * 			}
  * 		}
  * 	} );
- *	```
+ * ```
  *
- * Read more about this feature in the {@glink installation/getting-started/getting-and-setting-data#autosave-feature Autosave feature}
- * section of the {@glink installation/getting-started/getting-and-setting-data Saving and getting data}.
+ * Read more about this feature in the {@glink features/autosave Autosave} feature guide.
  */
 export default class Autosave extends Plugin {
 	/**
@@ -129,15 +127,22 @@ export default class Autosave extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'Autosave' {
-		return 'Autosave';
+	public static get pluginName() {
+		return 'Autosave' as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ PendingActions ];
+	public static override get isOfficialPlugin(): true {
+		return true;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static get requires() {
+		return [ PendingActions ] as const;
 	}
 
 	/**
@@ -203,7 +208,7 @@ export default class Autosave extends Plugin {
 
 		// It's not possible to easy test it because karma uses `beforeunload` event
 		// to warn before full page reload and this event cannot be dispatched manually.
-		/* istanbul ignore next */
+		/* istanbul ignore next -- @preserve */
 		this._domEmitter.listenTo( window, 'beforeunload', ( evtInfo, domEvt ) => {
 			if ( this._pendingActions.hasAny ) {
 				domEvt.returnValue = this._pendingActions.first!.message;
@@ -379,7 +384,7 @@ export interface AutosaveAdapter {
  *
  * See {@link module:core/editor/editorconfig~EditorConfig all editor configuration options}.
  *
- * See also the demo of the {@glink installation/getting-started/getting-and-setting-data#autosave-feature autosave feature}.
+ * See also the demo of the {@glink features/autosave autosave feature}.
  */
 export interface AutosaveConfig {
 
@@ -422,20 +427,4 @@ export interface AutosaveConfig {
 	 * ```
 	 */
 	waitingTime?: number;
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ Autosave.pluginName ]: Autosave;
-	}
-
-	interface EditorConfig {
-
-		/**
-		 * The configuration of the {@link module:autosave/autosave~Autosave autosave feature}.
-		 *
-		 * Read more in {@link module:autosave/autosave~AutosaveConfig}.
-		 */
-		autosave?: AutosaveConfig;
-	}
 }

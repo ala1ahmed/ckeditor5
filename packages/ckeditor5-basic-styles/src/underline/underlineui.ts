@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,9 @@
  * @module basic-styles/underline/underlineui
  */
 
-import { Plugin } from 'ckeditor5/src/core';
-import { ButtonView } from 'ckeditor5/src/ui';
+import { Plugin } from 'ckeditor5/src/core.js';
+import { ButtonView, MenuBarMenuListItemButtonView } from 'ckeditor5/src/ui.js';
+import { getButtonCreator } from '../utils.js';
 
 import underlineIcon from '../../theme/icons/underline.svg';
 
@@ -21,8 +22,15 @@ export default class UnderlineUI extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'UnderlineUI' {
-		return 'UnderlineUI';
+	public static get pluginName() {
+		return 'UnderlineUI' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -30,36 +38,18 @@ export default class UnderlineUI extends Plugin {
 	 */
 	public init(): void {
 		const editor = this.editor;
-		const t = editor.t;
+		const t = editor.locale.t;
+		const createButton = getButtonCreator( {
+			editor,
+			commandName: UNDERLINE,
+			plugin: this,
+			icon: underlineIcon,
+			label: t( 'Underline' ),
+			keystroke: 'CTRL+U'
+		} );
 
 		// Add bold button to feature components.
-		editor.ui.componentFactory.add( UNDERLINE, locale => {
-			const command = editor.commands.get( UNDERLINE )!;
-			const view = new ButtonView( locale );
-
-			view.set( {
-				label: t( 'Underline' ),
-				icon: underlineIcon,
-				keystroke: 'CTRL+U',
-				tooltip: true,
-				isToggleable: true
-			} );
-
-			view.bind( 'isOn', 'isEnabled' ).to( command, 'value', 'isEnabled' );
-
-			// Execute command.
-			this.listenTo( view, 'execute', () => {
-				editor.execute( UNDERLINE );
-				editor.editing.view.focus();
-			} );
-
-			return view;
-		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ UnderlineUI.pluginName ]: UnderlineUI;
+		editor.ui.componentFactory.add( UNDERLINE, () => createButton( ButtonView ) );
+		editor.ui.componentFactory.add( 'menuBar:' + UNDERLINE, () => createButton( MenuBarMenuListItemButtonView ) );
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,12 @@
  * @module engine/model/operation/markeroperation
  */
 
-import Operation from './operation';
-import Range from '../range';
+import Operation from './operation.js';
+import Range from '../range.js';
 
-import type Document from '../document';
-import type MarkerCollection from '../markercollection';
+import type Document from '../document.js';
+import type MarkerCollection from '../markercollection.js';
+import type { Selectable } from '../selection.js';
 
 export default class MarkerOperation extends Operation {
 	/**
@@ -84,6 +85,27 @@ export default class MarkerOperation extends Operation {
 	}
 
 	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		const ranges = [];
+
+		if ( this.oldRange ) {
+			ranges.push( this.oldRange.clone() );
+		}
+
+		if ( this.newRange ) {
+			if ( this.oldRange ) {
+				ranges.push( ...this.newRange.getDifference( this.oldRange ) );
+			} else {
+				ranges.push( this.newRange.clone() );
+			}
+		}
+
+		return ranges;
+	}
+
+	/**
 	 * Creates and returns an operation that has the same parameters as this operation.
 	 */
 	public clone(): MarkerOperation {
@@ -153,7 +175,7 @@ export default class MarkerOperation extends Operation {
 		);
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `MarkerOperation( ${ this.baseVersion } ): ` +
 	// @if CK_DEBUG_ENGINE //		`"${ this.name }": ${ this.oldRange } -> ${ this.newRange }`;
 	// @if CK_DEBUG_ENGINE // }

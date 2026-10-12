@@ -1,27 +1,27 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals window */
 
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic/src/ckeditor';
-import LinkImageEditing from '@ckeditor/ckeditor5-link/src/linkimageediting';
-import PictureEditing from '@ckeditor/ckeditor5-image/src/pictureediting';
-import ImageResize from '@ckeditor/ckeditor5-image/src/imageresize';
-import AutoImage from '@ckeditor/ckeditor5-image/src/autoimage';
-import LinkImage from '@ckeditor/ckeditor5-link/src/linkimage';
-import Alignment from '@ckeditor/ckeditor5-alignment/src/alignment';
-import CKBox from '@ckeditor/ckeditor5-ckbox/src/ckbox';
+import { CKBox, CKBoxImageEdit } from '@ckeditor/ckeditor5-ckbox';
+import { PictureEditing, ImageInsert, ImageResize, AutoImage } from '@ckeditor/ckeditor5-image';
+import { LinkImage } from '@ckeditor/ckeditor5-link';
+import { Alignment } from '@ckeditor/ckeditor5-alignment';
+
+// Umberto combines all `packages/*/docs` into the `docs/` directory. The import path must be valid after merging all directories.
+import ClassicEditor from '../build-classic.js';
 
 ClassicEditor.builtinPlugins.push(
-	LinkImageEditing,
 	PictureEditing,
+	ImageInsert,
 	ImageResize,
 	AutoImage,
 	LinkImage,
 	Alignment,
-	CKBox
+	CKBox,
+	CKBoxImageEdit
 );
 
 window.ClassicEditor = ClassicEditor;

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -14,17 +14,18 @@ import EmitterMixin, {
 	type CallbackOptions,
 	type BaseEvent,
 	type GetCallback
-} from '../emittermixin';
-import uid from '../uid';
-import isNode from './isnode';
-import isWindow from './iswindow';
-import type EventInfo from '../eventinfo';
+} from '../emittermixin.js';
+import uid from '../uid.js';
+import isNode from './isnode.js';
+import isWindow from './iswindow.js';
+import type EventInfo from '../eventinfo.js';
+import type { Constructor, Mixed } from '../mix.js';
 
-const defaultEmitterClass = DomEmitterMixin( EmitterMixin() );
+const defaultEmitterClass = /* #__PURE__ */ DomEmitterMixin( /* #__PURE__ */ EmitterMixin() );
 
 /**
  * Mixin that injects the DOM events API into its host. It provides the API
- * compatible with {@link module:utils/emittermixin~EmitterMixin}.
+ * compatible with {@link module:utils/emittermixin~Emitter}.
  *
  * This function creates a class that inherits from the provided `base` and implements `Emitter` interface.
  *
@@ -46,16 +47,11 @@ const defaultEmitterClass = DomEmitterMixin( EmitterMixin() );
  *
  * @label EXTENDS
  */
-export default function DomEmitterMixin<Base extends abstract new ( ...args: Array<any> ) => Emitter>(
-	base: Base
-): {
-	new ( ...args: ConstructorParameters<Base> ): InstanceType<Base> & DomEmitter;
-	prototype: InstanceType<Base> & DomEmitter;
-};
+export default function DomEmitterMixin<Base extends Constructor<Emitter>>( base: Base ): Mixed<Base, DomEmitter>;
 
 /**
  * Mixin that injects the DOM events API into its host. It provides the API
- * compatible with {@link module:utils/emittermixin~EmitterMixin}.
+ * compatible with {@link module:utils/emittermixin~Emitter}.
  *
  * This function creates a class that implements `Emitter` interface.
  *
@@ -80,7 +76,7 @@ export default function DomEmitterMixin(): {
 	prototype: DomEmitter;
 };
 
-export default function DomEmitterMixin( base?: abstract new ( ...args: Array<any> ) => Emitter ): unknown {
+export default function DomEmitterMixin( base?: Constructor<Emitter> ): unknown {
 	if ( !base ) {
 		return defaultEmitterClass;
 	}
@@ -212,7 +208,7 @@ export default function DomEmitterMixin( base?: abstract new ( ...args: Array<an
  *                    +-----------------------------------------+
  *                                fire( click, DOM Event )
  */
-class ProxyEmitter extends EmitterMixin() {
+class ProxyEmitter extends /* #__PURE__ */ EmitterMixin() {
 	private readonly _domNode: Node | Window;
 	private readonly _options: { capture: boolean; passive: boolean };
 

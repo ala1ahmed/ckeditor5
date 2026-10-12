@@ -1,22 +1,21 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals document */
 
-import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor';
-import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor';
-import ViewDocument from '@ckeditor/ckeditor5-engine/src/view/document';
+import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor.js';
+import ClassicTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/classictesteditor.js';
+import ViewDocument from '@ckeditor/ckeditor5-engine/src/view/document.js';
 
-import HtmlDataProcessor from '@ckeditor/ckeditor5-engine/src/dataprocessor/htmldataprocessor';
-import normalizeClipboardData from '@ckeditor/ckeditor5-clipboard/src/utils/normalizeclipboarddata';
-import normalizeHtml from '@ckeditor/ckeditor5-utils/tests/_utils/normalizehtml';
-import { setData, stringify as stringifyModel } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
-import { stringify as stringifyView } from '@ckeditor/ckeditor5-engine/src/dev-utils/view';
+import HtmlDataProcessor from '@ckeditor/ckeditor5-engine/src/dataprocessor/htmldataprocessor.js';
+import normalizeClipboardData from '@ckeditor/ckeditor5-clipboard/src/utils/normalizeclipboarddata.js';
+import normalizeHtml from '@ckeditor/ckeditor5-utils/tests/_utils/normalizehtml.js';
+import { setData, stringify as stringifyModel } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
+import { stringify as stringifyView } from '@ckeditor/ckeditor5-engine/src/dev-utils/view.js';
 
-import { fixtures, browserFixtures } from './fixtures';
-import { StylesProcessor } from '@ckeditor/ckeditor5-engine/src/view/stylesmap';
+import { StylesProcessor } from '@ckeditor/ckeditor5-engine/src/view/stylesmap.js';
 
 const htmlDataProcessor = new HtmlDataProcessor( new ViewDocument( new StylesProcessor() ) );
 
@@ -58,6 +57,7 @@ export function createDataTransfer( data ) {
  *		{
  *			browserName: [ fixtureName1, fixtureName2 ]
  *		}
+ * @param {Object} config.fixtures Fixtures object with `generic` and `browser` properties.
  */
 export function generateTests( config ) {
 	if ( [ 'normalization', 'integration' ].indexOf( config.type ) === -1 ) {
@@ -72,12 +72,18 @@ export function generateTests( config ) {
 		throw new Error( 'No or empty `config.browsers` option provided.' );
 	}
 
-	const groups = groupFixturesByBrowsers( config.browsers, config.input, config.skip );
+	if ( !config.fixtures ) {
+		throw new Error( 'Fixtures are required to run tests.' );
+	}
+
+	const groups = groupFixturesByBrowsers( config.browsers, config.input, config.skip, config.fixtures );
 	const generateSuiteFn = config.type === 'normalization' ? generateNormalizationTests : generateIntegrationTests;
 
 	describe( config.type, () => {
 		describe( config.input, () => {
-			const editorConfig = config.editorConfig || {};
+			const editorConfig = typeof config.editorConfig == 'function' ?
+				config.editorConfig :
+				() => Promise.resolve( config.editorConfig || {} );
 
 			for ( const group of Object.keys( groups ) ) {
 				const skip = config.skip && config.skip[ group ] || [];
@@ -96,6 +102,8 @@ export function generateTests( config ) {
 //
 // @param {Array.<String>} browsers List of all browsers for which fixture groups will be created.
 // @param {String} fixturesGroup Fixtures group name.
+// @param {Object} skipBrowsers List of fixtures for any browser to skip.
+// @param {Object} fixtures An object containing two keys: `generic` and `browser`.
 // @returns {Object} Object containing browsers groups where key is the name of the group and value is fixtures object:
 //
 //		{
@@ -103,14 +111,14 @@ export function generateTests( config ) {
 //			'edge': { ... }
 //			'chrome, firefox': { ... }
 // 		}
-function groupFixturesByBrowsers( browsers, fixturesGroup, skipBrowsers ) {
+function groupFixturesByBrowsers( browsers, fixturesGroup, skipBrowsers, fixtures ) {
 	const browsersGroups = {};
 	const browsersGeneric = browsers.slice( 0 );
 
 	// Create separate groups for browsers with browser-specific fixtures available.
 	for ( const browser of browsers ) {
-		if ( browserFixtures[ fixturesGroup ] && browserFixtures[ fixturesGroup ][ browser ] ) {
-			browsersGroups[ browser ] = browserFixtures[ fixturesGroup ][ browser ];
+		if ( fixtures.browser[ fixturesGroup ] && fixtures.browser[ fixturesGroup ][ browser ] ) {
+			browsersGroups[ browser ] = fixtures.browser[ fixturesGroup ][ browser ];
 			browsersGeneric.splice( browsersGeneric.indexOf( browser ), 1 );
 		}
 	}
@@ -119,7 +127,7 @@ function groupFixturesByBrowsers( browsers, fixturesGroup, skipBrowsers ) {
 	if ( skipBrowsers ) {
 		for ( const browser of Object.keys( skipBrowsers ) ) {
 			if ( browsersGeneric.indexOf( browser ) !== -1 ) {
-				browsersGroups[ browser ] = fixtures[ fixturesGroup ] ? fixtures[ fixturesGroup ] : null;
+				browsersGroups[ browser ] = fixtures.generic[ fixturesGroup ] ? fixtures.generic[ fixturesGroup ] : null;
 				browsersGeneric.splice( browsersGeneric.indexOf( browser ), 1 );
 			}
 		}
@@ -127,7 +135,7 @@ function groupFixturesByBrowsers( browsers, fixturesGroup, skipBrowsers ) {
 
 	// Use generic fixtures (if available) for browsers left.
 	if ( browsersGeneric.length ) {
-		browsersGroups[ browsersGeneric.join( ', ' ) ] = fixtures[ fixturesGroup ] ? fixtures[ fixturesGroup ] : null;
+		browsersGroups[ browsersGeneric.join( ', ' ) ] = fixtures.generic[ fixturesGroup ] ? fixtures.generic[ fixturesGroup ] : null;
 	}
 
 	return browsersGroups;
@@ -146,16 +154,12 @@ function generateNormalizationTests( title, fixtures, editorConfig, skip, only )
 	describe( title, () => {
 		let editor;
 
-		beforeEach( () => {
-			return VirtualTestEditor
-				.create( editorConfig )
-				.then( newEditor => {
-					editor = newEditor;
-				} );
+		beforeEach( async () => {
+			editor = await VirtualTestEditor.create( await editorConfig() );
 		} );
 
-		afterEach( () => {
-			editor.destroy();
+		afterEach( async () => {
+			await editor.destroy();
 		} );
 
 		for ( const name of Object.keys( fixtures.input ) ) {
@@ -201,16 +205,12 @@ function generateIntegrationTests( title, fixtures, editorConfig, skip, only ) {
 		let element, editor;
 		let data = {};
 
-		before( () => {
+		before( async () => {
 			element = document.createElement( 'div' );
 
 			document.body.appendChild( element );
 
-			return ClassicTestEditor
-				.create( element, editorConfig )
-				.then( editorInstance => {
-					editor = editorInstance;
-				} );
+			editor = await ClassicTestEditor.create( element, await editorConfig() );
 		} );
 
 		beforeEach( () => {

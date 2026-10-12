@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,11 @@
  * @module font/fontbackgroundcolor/fontbackgroundcolorediting
  */
 
-import { Plugin, type Editor } from 'ckeditor5/src/core';
-import { addBackgroundRules } from 'ckeditor5/src/engine';
+import { Plugin, type Editor } from 'ckeditor5/src/core.js';
+import { addBackgroundRules } from 'ckeditor5/src/engine.js';
 
-import FontBackgroundColorCommand from './fontbackgroundcolorcommand';
-import { FONT_BACKGROUND_COLOR, renderDowncastElement, renderUpcastAttribute } from '../utils';
+import FontBackgroundColorCommand from './fontbackgroundcolorcommand.js';
+import { FONT_BACKGROUND_COLOR, renderDowncastElement, renderUpcastAttribute } from '../utils.js';
 
 /**
  * The font background color editing feature.
@@ -19,14 +19,21 @@ import { FONT_BACKGROUND_COLOR, renderDowncastElement, renderUpcastAttribute } f
  * It introduces the {@link module:font/fontbackgroundcolor/fontbackgroundcolorcommand~FontBackgroundColorCommand command} and
  * the `fontBackgroundColor` attribute in the {@link module:engine/model/model~Model model} which renders
  * in the {@link module:engine/view/view view} as a `<span>` element (`<span style="background-color: ...">`),
- * depending on the {@link module:font/fontbackgroundcolor~FontBackgroundColorConfig configuration}.
+ * depending on the {@link module:font/fontconfig~FontColorConfig configuration}.
  */
 export default class FontBackgroundColorEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'FontBackgroundColorEditing' {
-		return 'FontBackgroundColorEditing';
+	public static get pluginName() {
+		return 'FontBackgroundColorEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -131,14 +138,4 @@ export default class FontBackgroundColorEditing extends Plugin {
 			copyOnEnter: true
 		} );
 	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ FontBackgroundColorEditing.pluginName ]: FontBackgroundColorEditing;
-	}
-
-  interface CommandsMap {
-	[ FONT_BACKGROUND_COLOR ]: FontBackgroundColorCommand;
-  }
 }

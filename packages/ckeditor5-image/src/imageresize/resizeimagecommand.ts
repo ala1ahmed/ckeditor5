@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,7 +7,8 @@
  * @module image/imageresize/resizeimagecommand
  */
 
-import { Command } from 'ckeditor5/src/core';
+import { Command } from 'ckeditor5/src/core.js';
+import type ImageUtils from '../imageutils.js';
 
 /**
  * The resize image command. Currently, it only supports the width attribute.
@@ -26,16 +27,16 @@ export default class ResizeImageCommand extends Command {
 	 */
 	public override refresh(): void {
 		const editor = this.editor;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 		const element = imageUtils.getClosestSelectedImageElement( editor.model.document.selection );
 
 		this.isEnabled = !!element;
 
-		if ( !element || !element.hasAttribute( 'width' ) ) {
+		if ( !element || !element.hasAttribute( 'resizedWidth' ) ) {
 			this.value = null;
 		} else {
 			this.value = {
-				width: element.getAttribute( 'width' ) as string,
+				width: element.getAttribute( 'resizedWidth' ) as string,
 				height: null
 			};
 		}
@@ -59,7 +60,7 @@ export default class ResizeImageCommand extends Command {
 	public override execute( options: { width: string | null } ): void {
 		const editor = this.editor;
 		const model = editor.model;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
 		const imageElement = imageUtils.getClosestSelectedImageElement( model.document.selection );
 
 		this.value = {
@@ -69,7 +70,9 @@ export default class ResizeImageCommand extends Command {
 
 		if ( imageElement ) {
 			model.change( writer => {
-				writer.setAttribute( 'width', options.width, imageElement );
+				writer.setAttribute( 'resizedWidth', options.width, imageElement );
+				writer.removeAttribute( 'resizedHeight', imageElement );
+				imageUtils.setImageNaturalSizeAttributes( imageElement );
 			} );
 		}
 	}

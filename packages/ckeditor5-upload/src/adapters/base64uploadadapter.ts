@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -9,36 +9,41 @@
 
 /* globals window */
 
-import { Plugin, type PluginDependencies } from '@ckeditor/ckeditor5-core';
-import FileRepository, { type UploadResponse, type FileLoader, type UploadAdapter } from '../filerepository';
+import { Plugin } from '@ckeditor/ckeditor5-core';
+import FileRepository, { type UploadResponse, type FileLoader, type UploadAdapter } from '../filerepository.js';
 
 type DomFileReader = globalThis.FileReader;
 
 /**
  * A plugin that converts images inserted into the editor into [Base64 strings](https://en.wikipedia.org/wiki/Base64)
- * in the {@glink installation/getting-started/getting-and-setting-data editor output}.
+ * in the {@glink getting-started/setup/getting-and-setting-data editor output}.
  *
  * This kind of image upload does not require server processing – images are stored with the rest of the text and
  * displayed by the web browser without additional requests.
  *
  * Check out the {@glink features/images/image-upload/image-upload comprehensive "Image upload overview"} to learn about
  * other ways to upload images into CKEditor 5.
- *
- * @extends module:core/plugin~Plugin
  */
 export default class Base64UploadAdapter extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ FileRepository ];
+	public static get requires() {
+		return [ FileRepository ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'Base64UploadAdapter' {
-		return 'Base64UploadAdapter';
+	public static get pluginName() {
+		return 'Base64UploadAdapter' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -51,25 +56,19 @@ export default class Base64UploadAdapter extends Plugin {
 
 /**
  * The upload adapter that converts images inserted into the editor into Base64 strings.
- *
- * @private
- * @implements module:upload/filerepository~UploadAdapter
  */
 class Adapter implements UploadAdapter {
+	/**
+	 * `FileLoader` instance to use during the upload.
+	 */
 	public loader: FileLoader;
+
 	public reader?: DomFileReader;
 
 	/**
 	 * Creates a new adapter instance.
-	 *
-	 * @param {module:upload/filerepository~FileLoader} loader
 	 */
 	constructor( loader: FileLoader ) {
-		/**
-		 * `FileLoader` instance to use during the upload.
-		 *
-		 * @member {module:upload/filerepository~FileLoader} #loader
-		 */
 		this.loader = loader;
 	}
 
@@ -77,7 +76,6 @@ class Adapter implements UploadAdapter {
 	 * Starts the upload process.
 	 *
 	 * @see module:upload/filerepository~UploadAdapter#upload
-	 * @returns {Promise}
 	 */
 	public upload(): Promise<UploadResponse> {
 		return new Promise( ( resolve, reject ) => {
@@ -105,15 +103,8 @@ class Adapter implements UploadAdapter {
 	 * Aborts the upload process.
 	 *
 	 * @see module:upload/filerepository~UploadAdapter#abort
-	 * @returns {Promise}
 	 */
 	public abort(): void {
 		this.reader!.abort();
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ Base64UploadAdapter.pluginName ]: Base64UploadAdapter;
 	}
 }

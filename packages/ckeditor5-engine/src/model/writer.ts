@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,30 +7,31 @@
  * @module engine/model/writer
  */
 
-import AttributeOperation from './operation/attributeoperation';
-import DetachOperation from './operation/detachoperation';
-import InsertOperation from './operation/insertoperation';
-import MarkerOperation from './operation/markeroperation';
-import MergeOperation from './operation/mergeoperation';
-import MoveOperation from './operation/moveoperation';
-import RenameOperation from './operation/renameoperation';
-import RootAttributeOperation from './operation/rootattributeoperation';
-import SplitOperation from './operation/splitoperation';
+import AttributeOperation from './operation/attributeoperation.js';
+import DetachOperation from './operation/detachoperation.js';
+import InsertOperation from './operation/insertoperation.js';
+import MarkerOperation from './operation/markeroperation.js';
+import MergeOperation from './operation/mergeoperation.js';
+import MoveOperation from './operation/moveoperation.js';
+import RenameOperation from './operation/renameoperation.js';
+import RootAttributeOperation from './operation/rootattributeoperation.js';
+import RootOperation from './operation/rootoperation.js';
+import SplitOperation from './operation/splitoperation.js';
 
-import DocumentFragment from './documentfragment';
-import DocumentSelection from './documentselection';
-import Element from './element';
-import Position, { type PositionOffset, type PositionStickiness } from './position';
-import Range from './range';
-import RootElement from './rootelement';
-import Text from './text';
+import DocumentFragment from './documentfragment.js';
+import DocumentSelection from './documentselection.js';
+import Element from './element.js';
+import Position, { type PositionOffset, type PositionStickiness } from './position.js';
+import Range from './range.js';
+import RootElement from './rootelement.js';
+import Text from './text.js';
 
-import type { Marker } from './markercollection';
-import type { default as Selection, PlaceOrOffset, Selectable } from './selection';
-import type Batch from './batch';
-import type Item from './item';
-import type Model from './model';
-import type { default as Node, NodeAttributes } from './node';
+import type { Marker } from './markercollection.js';
+import type { default as Selection, PlaceOrOffset, Selectable } from './selection.js';
+import type Batch from './batch.js';
+import type Item from './item.js';
+import type Model from './model.js';
+import type { default as Node, NodeAttributes } from './node.js';
 
 import { CKEditorError, logWarning, toMap } from '@ckeditor/ckeditor5-utils';
 
@@ -41,16 +42,18 @@ import { CKEditorError, logWarning, toMap } from '@ckeditor/ckeditor5-utils';
  * The instance of the writer is only available in the {@link module:engine/model/model~Model#change `change()`} or
  * {@link module:engine/model/model~Model#enqueueChange `enqueueChange()`}.
  *
- *		model.change( writer => {
- *			writer.insertText( 'foo', paragraph, 'end' );
- *		} );
+ * ```ts
+ * model.change( writer => {
+ * 	writer.insertText( 'foo', paragraph, 'end' );
+ * } );
+ * ```
  *
  * Note that the writer should never be stored and used outside of the `change()` and
  * `enqueueChange()` blocks.
  *
  * Note that writer's methods do not check the {@link module:engine/model/schema~Schema}. It is possible
  * to create incorrect model structures by using the writer. Read more about in
- * {@glink framework/guides/deep-dive/schema#who-checks-the-schema "Who checks the schema?"}.
+ * {@glink framework/deep-dive/schema#who-checks-the-schema "Who checks the schema?"}.
  *
  * @see module:engine/model/model~Model#change
  * @see module:engine/model/model~Model#enqueueChange
@@ -228,7 +231,11 @@ export default class Writer {
 
 		const version = position.root.document ? position.root.document.version : null;
 
-		const insert = new InsertOperation( position, item, version );
+		const children = item instanceof DocumentFragment ?
+			item._removeChildren( 0, item.childCount ) :
+			item;
+
+		const insert = new InsertOperation( position, children, version );
 
 		if ( item instanceof Text ) {
 			insert.shouldReceiveAttributes = true;
@@ -279,6 +286,7 @@ export default class Writer {
 	 *
 	 * These parameters work in the same way as {@link #createPositionAt `writer.createPositionAt()`}.
 	 *
+	 * @label WITHOUT_ATTRIBUTES
 	 * @param text Text data.
 	 * @param offset Offset or one of the flags. Used only when second parameter is a {@link module:engine/model/item~Item model item}.
 	 */
@@ -309,6 +317,7 @@ export default class Writer {
 	 *
 	 * These parameters work in the same way as {@link #createPositionAt `writer.createPositionAt()`}.
 	 *
+	 * @label WITH_ATTRIBUTES
 	 * @param text Text data.
 	 * @param attributes Text attributes.
 	 * @param offset Offset or one of the flags. Used only when third parameter is a {@link module:engine/model/item~Item model item}.
@@ -317,7 +326,7 @@ export default class Writer {
 		text: string,
 		attributes?: NodeAttributes,
 		itemOrPosition?: Item | Position,
-		offset?: number | 'end' | 'before' | 'after'
+		offset?: PositionOffset
 	): void;
 
 	public insertText(
@@ -354,13 +363,14 @@ export default class Writer {
 	 *
 	 * These parameters works the same way as {@link #createPositionAt `writer.createPositionAt()`}.
 	 *
+	 * @label WITHOUT_ATTRIBUTES
 	 * @param name Name of the element.
 	 * @param offset Offset or one of the flags. Used only when second parameter is a {@link module:engine/model/item~Item model item}.
 	 */
 	public insertElement(
 		name: string,
 		itemOrPosition: Item | DocumentFragment | Position,
-		offset?: number | 'end' | 'before' | 'after'
+		offset?: PositionOffset
 	): void;
 
 	/**
@@ -384,6 +394,7 @@ export default class Writer {
 	 *
 	 * These parameters works the same way as {@link #createPositionAt `writer.createPositionAt()`}.
 	 *
+	 * @label WITH_ATTRIBUTES
 	 * @param name Name of the element.
 	 * @param attributes Elements attributes.
 	 * @param offset Offset or one of the flags. Used only when third parameter is a {@link module:engine/model/item~Item model item}.
@@ -392,7 +403,7 @@ export default class Writer {
 		name: string,
 		attributes: NodeAttributes,
 		itemOrPosition: Item | DocumentFragment | Position,
-		offset?: number | 'end' | 'before' | 'after'
+		offset?: PositionOffset
 	): void;
 
 	public insertElement(
@@ -434,6 +445,7 @@ export default class Writer {
 	 * writer.appendText( 'foo', paragraph );
 	 * ```
 	 *
+	 * @label WITHOUT_ATTRIBUTES
 	 * @param text Text data.
 	 */
 	public appendText(
@@ -448,6 +460,7 @@ export default class Writer {
 	 * writer.appendText( 'foo', { bold: true }, paragraph );
 	 * ```
 	 *
+	 * @label WITH_ATTRIBUTES
 	 * @param text Text data.
 	 * @param attributes Text attributes.
 	 */
@@ -476,6 +489,7 @@ export default class Writer {
 	 * writer.appendElement( 'paragraph', root );
 	 * ```
 	 *
+	 * @label WITHOUT_ATTRIBUTES
 	 * @param name Name of the element.
 	 */
 	public appendElement(
@@ -490,6 +504,7 @@ export default class Writer {
 	 * writer.appendElement( 'paragraph', { alignment: 'center' }, root );
 	 * ```
 	 *
+	 * @label WITH_ATTRIBUTES
 	 * @param name Name of the element.
 	 * @param attributes Elements attributes.
 	 */
@@ -619,7 +634,7 @@ export default class Writer {
 	 * writer.move( sourceRange, image, 'after' );
 	 * ```
 	 *
-	 * These parameters works the same way as {@link #createPositionAt `writer.createPositionAt()`}.
+	 * These parameters work the same way as {@link #createPositionAt `writer.createPositionAt()`}.
 	 *
 	 * Note that items can be moved only within the same tree. It means that you can move items within the same root
 	 * (element or document fragment) or between {@link module:engine/model/document~Document#roots documents roots},
@@ -815,12 +830,20 @@ export default class Writer {
 		return this.model.createRangeOn( element );
 	}
 
+	/**
+	 * Shortcut for {@link module:engine/model/model~Model#createSelection:NODE_OFFSET `Model#createSelection()`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public createSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: { backward?: boolean } ): Selection;
-	public createSelection( selectable?: Exclude<Selectable, Node>, options?: { backward?: boolean } ): Selection;
 
 	/**
-	 * Shortcut for {@link module:engine/model/model~Model#createSelection `Model#createSelection()`}.
+	 * Shortcut for {@link module:engine/model/model~Model#createSelection:SELECTABLE `Model#createSelection()`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public createSelection( selectable?: Exclude<Selectable, Node>, options?: { backward?: boolean } ): Selection;
+
 	public createSelection( ...args: [ any?, any?, any? ] ): Selection {
 		return this.model.createSelection( ...args );
 	}
@@ -870,7 +893,7 @@ export default class Writer {
 	 * @param element The element to rename.
 	 * @param newName New element name.
 	 */
-	public rename( element: Element, newName: string ): void {
+	public rename( element: Element | DocumentFragment, newName: string ): void {
 		this._assertWriterUsedCorrectly();
 
 		if ( !( element instanceof Element ) ) {
@@ -1048,7 +1071,7 @@ export default class Writer {
 	 *
 	 * The `options.affectsData` parameter, which defaults to `false`, allows you to define if a marker affects the data. It should be
 	 * `true` when the marker change changes the data returned by the
-	 * {@link module:core/editor/utils/dataapimixin~DataApi#getData `editor.getData()`} method.
+	 * {@link module:core/editor/editor~Editor#getData `editor.getData()`} method.
 	 * When set to `true` it fires the {@link module:engine/model/document~Document#event:change:data `change:data`} event.
 	 * When set to `false` it fires the {@link module:engine/model/document~Document#event:change `change`} event.
 	 *
@@ -1147,7 +1170,7 @@ export default class Writer {
 	 *
 	 * The `options.affectsData` parameter, which defaults to `false`, allows you to define if a marker affects the data. It should be
 	 * `true` when the marker change changes the data returned by
-	 * the {@link module:core/editor/utils/dataapimixin~DataApi#getData `editor.getData()`} method.
+	 * the {@link module:core/editor/editor~Editor#getData `editor.getData()`} method.
 	 * When set to `true` it fires the {@link module:engine/model/document~Document#event:change:data `change:data`} event.
 	 * When set to `false` it fires the {@link module:engine/model/document~Document#event:change `change`} event.
 	 *
@@ -1303,8 +1326,128 @@ export default class Writer {
 		applyMarkerOperation( this, name, oldRange, null, marker.affectsData );
 	}
 
+	/**
+	 * Adds a new root to the document (or re-attaches a {@link #detachRoot detached root}).
+	 *
+	 * Throws an error, if trying to add a root that is already added and attached.
+	 *
+	 * @param rootName Name of the added root.
+	 * @param elementName The element name. Defaults to `'$root'` which also has some basic schema defined
+	 * (e.g. `$block` elements are allowed inside the `$root`). Make sure to define a proper schema if you use a different name.
+	 * @returns The added root element.
+	 */
+	public addRoot( rootName: string, elementName = '$root' ): RootElement {
+		this._assertWriterUsedCorrectly();
+
+		const root = this.model.document.getRoot( rootName );
+
+		if ( root && root.isAttached() ) {
+			/**
+			 * Root with provided name already exists and is attached.
+			 *
+			 * @error writer-addroot-root-exists
+			 */
+			throw new CKEditorError( 'writer-addroot-root-exists', this );
+		}
+
+		const document = this.model.document;
+		const operation = new RootOperation( rootName, elementName, true, document, document.version );
+
+		this.batch.addOperation( operation );
+		this.model.applyOperation( operation );
+
+		return this.model.document.getRoot( rootName )!;
+	}
+
+	/**
+	 * Detaches the root from the document.
+	 *
+	 * All content and markers are removed from the root upon detaching. New content and new markers cannot be added to the root, as long
+	 * as it is detached.
+	 *
+	 * A root cannot be fully removed from the document, it can be only detached. A root is permanently removed only after you
+	 * re-initialize the editor and do not specify the root in the initial data.
+	 *
+	 * A detached root can be re-attached using {@link #addRoot}.
+	 *
+	 * Throws an error if the root does not exist or the root is already detached.
+	 *
+	 * @param rootOrName Name of the detached root.
+	 */
+	public detachRoot( rootOrName: string | RootElement ): void {
+		this._assertWriterUsedCorrectly();
+
+		const root = typeof rootOrName == 'string' ? this.model.document.getRoot( rootOrName ) : rootOrName;
+
+		if ( !root || !root.isAttached() ) {
+			/**
+			 * Root with provided name does not exist or is already detached.
+			 *
+			 * @error writer-detachroot-no-root
+			 */
+			throw new CKEditorError( 'writer-detachroot-no-root', this );
+		}
+
+		// First, remove all markers from the root. It is better to do it before removing stuff for undo purposes.
+		// However, looking through all the markers may not be the best performance wise. But there's no better solution for now.
+		for ( const marker of this.model.markers ) {
+			if ( marker.getRange().root === root ) {
+				this.removeMarker( marker );
+			}
+		}
+
+		// Remove all attributes from the root.
+		for ( const key of root.getAttributeKeys() ) {
+			this.removeAttribute( key, root );
+		}
+
+		// Remove all contents of the root.
+		this.remove( this.createRangeIn( root ) );
+
+		// Finally, detach the root.
+		const document = this.model.document;
+		const operation = new RootOperation( root.rootName, root.name, false, document, document.version );
+
+		this.batch.addOperation( operation );
+		this.model.applyOperation( operation );
+	}
+
+	/**
+	 * Sets the document's selection (ranges and direction) to the specified location based on the given
+	 * {@link module:engine/model/selection~Selectable selectable} or creates an empty selection if no arguments were passed.
+	 *
+	 * ```ts
+	 * // Sets collapsed selection at the position of the given node and an offset.
+	 * writer.setSelection( paragraph, offset );
+	 * ```
+	 *
+	 * Creates a range inside an {@link module:engine/model/element~Element element} which starts before the first child of
+	 * that element and ends after the last child of that element.
+	 *
+	 * ```ts
+	 * writer.setSelection( paragraph, 'in' );
+	 * ```
+	 *
+	 * Creates a range on an {@link module:engine/model/item~Item item} which starts before the item and ends just after the item.
+	 *
+	 * ```ts
+	 * writer.setSelection( paragraph, 'on' );
+	 * ```
+	 *
+	 * `Writer#setSelection()` allow passing additional options (`backward`) as the last argument.
+	 *
+	 * ```ts
+	 * // Sets selection as backward.
+	 * writer.setSelection( element, 'in', { backward: true } );
+	 * ```
+	 *
+	 * Throws `writer-incorrect-use` error when the writer is used outside the `change()` block.
+	 *
+	 * See also: {@link #setSelection:SELECTABLE `setSelection( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public setSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: { backward?: boolean } ): void;
-	public setSelection( selectable: Exclude<Selectable, Node>, options?: { backward?: boolean } ): void;
 
 	/**
 	 * Sets the document's selection (ranges and direction) to the specified location based on the given
@@ -1331,22 +1474,6 @@ export default class Writer {
 	 * const position = writer.createPosition( root, path );
 	 * writer.setSelection( position );
 	 *
-	 * // Sets collapsed selection at the position of the given node and an offset.
-	 * writer.setSelection( paragraph, offset );
-	 * ```
-	 *
-	 * Creates a range inside an {@link module:engine/model/element~Element element} which starts before the first child of
- 	 * that element and ends after the last child of that element.
-	 *
-	 * ```ts
-	 * writer.setSelection( paragraph, 'in' );
-	 * ```
-	 *
-	 * Creates a range on an {@link module:engine/model/item~Item item} which starts before the item and ends just after the item.
-	 *
-	 * ```ts
-	 * writer.setSelection( paragraph, 'on' );
-	 *
 	 * // Removes all selection's ranges.
 	 * writer.setSelection( null );
 	 * ```
@@ -1359,7 +1486,13 @@ export default class Writer {
 	 * ```
 	 *
 	 * Throws `writer-incorrect-use` error when the writer is used outside the `change()` block.
+	 *
+	 * See also: {@link #setSelection:NODE_OFFSET `setSelection( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public setSelection( selectable: Exclude<Selectable, Node>, options?: { backward?: boolean } ): void;
+
 	public setSelection( ...args: Parameters<Selection[ 'setTo' ]> ): void {
 		this._assertWriterUsedCorrectly();
 
@@ -1391,6 +1524,7 @@ export default class Writer {
 	 * writer.setSelectionAttribute( 'italic', true );
 	 * ```
 	 *
+	 * @label KEY_VALUE
 	 * @param key Key of the attribute to set.
 	 * @param value Attribute value.
 	 */
@@ -1411,6 +1545,7 @@ export default class Writer {
 	 * writer.setSelectionAttribute( new Map( [ [ 'italic', true ] ] ) );
 	 * ```
 	 *
+	 * @label OBJECT
 	 * @param objectOrIterable Object / iterable of key => value attribute pairs.
 	 */
 	public setSelectionAttribute( objectOrIterable: NodeAttributes ): void;

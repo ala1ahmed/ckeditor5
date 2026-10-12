@@ -1,30 +1,30 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals window */
 
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic/src/ckeditor';
-import PasteFromOffice from '@ckeditor/ckeditor5-paste-from-office/src/pastefromoffice';
-import ListProperties from '@ckeditor/ckeditor5-list/src/listproperties';
-import Alignment from '@ckeditor/ckeditor5-alignment/src/alignment';
-import Code from '@ckeditor/ckeditor5-basic-styles/src/code';
-import Strikethrough from '@ckeditor/ckeditor5-basic-styles/src/strikethrough';
-import Subscript from '@ckeditor/ckeditor5-basic-styles/src/subscript';
-import Superscript from '@ckeditor/ckeditor5-basic-styles/src/superscript';
-import Underline from '@ckeditor/ckeditor5-basic-styles/src/underline';
-import Font from '@ckeditor/ckeditor5-font/src/font';
-import HorizontalLine from '@ckeditor/ckeditor5-horizontal-line/src/horizontalline';
-import Indent from '@ckeditor/ckeditor5-indent/src/indent';
-import IndentBlock from '@ckeditor/ckeditor5-indent/src/indentblock';
-import ImageResize from '@ckeditor/ckeditor5-image/src/imageresize';
-import TableProperties from '@ckeditor/ckeditor5-table/src/tableproperties';
-import TableCellProperties from '@ckeditor/ckeditor5-table/src/tablecellproperties';
+import { Bookmark } from '@ckeditor/ckeditor5-bookmark';
+import { Code, Strikethrough, Subscript, Superscript, Underline } from '@ckeditor/ckeditor5-basic-styles';
+import { CKBox, CKBoxImageEdit } from '@ckeditor/ckeditor5-ckbox';
+import { PictureEditing, ImageInsert, ImageResize, AutoImage } from '@ckeditor/ckeditor5-image';
+import { LinkImage } from '@ckeditor/ckeditor5-link';
+import { Indent, IndentBlock } from '@ckeditor/ckeditor5-indent';
+import { ListProperties } from '@ckeditor/ckeditor5-list';
+import { PasteFromOffice } from '@ckeditor/ckeditor5-paste-from-office';
+import { TableProperties, TableCellProperties, TableColumnResize } from '@ckeditor/ckeditor5-table';
+import { Alignment } from '@ckeditor/ckeditor5-alignment';
+import { Font } from '@ckeditor/ckeditor5-font';
+import { HorizontalLine } from '@ckeditor/ckeditor5-horizontal-line';
+
+// Umberto combines all `packages/*/docs` into the `docs/` directory. The import path must be valid after merging all directories.
+import ClassicEditor from '../build-classic.js';
 
 ClassicEditor.builtinPlugins.push(
 	PasteFromOffice,
 	Alignment,
+	Bookmark,
 	Code,
 	Strikethrough,
 	Subscript,
@@ -34,12 +34,19 @@ ClassicEditor.builtinPlugins.push(
 	HorizontalLine,
 	Indent,
 	IndentBlock,
+	PictureEditing,
+	ImageInsert,
 	ImageResize,
+	AutoImage,
+	LinkImage,
+	CKBox,
+	CKBoxImageEdit,
 	TableProperties,
-	TableCellProperties
+	TableCellProperties,
+	TableColumnResize
 );
 
-ClassicEditor.defaultConfig.table.contentToolbar.push( 'tableProperties', 'tableCellProperties' );
+ClassicEditor.defaultConfig.table.contentToolbar.push( 'tableProperties', 'tableCellProperties', 'tableColumnResize' );
 
 window.ClassicEditor = ClassicEditor;
 window.ListProperties = ListProperties;

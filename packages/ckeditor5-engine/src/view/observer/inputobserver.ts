@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,11 +7,13 @@
  * @module engine/view/observer/inputobserver
  */
 
-import DomEventObserver from './domeventobserver';
-import type DomEventData from './domeventdata';
-import type ViewRange from '../range';
-import DataTransfer from '../datatransfer';
+import DomEventObserver from './domeventobserver.js';
+import type DomEventData from './domeventdata.js';
+import type ViewRange from '../range.js';
+import DataTransfer from '../datatransfer.js';
 import { env } from '@ckeditor/ckeditor5-utils';
+
+// @if CK_DEBUG_TYPING // const { _debouncedLine } = require( '../../dev-utils/utils.js' );
 
 /**
  * Observer for events connected with data input.
@@ -29,7 +31,8 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 	 * @inheritDoc
 	 */
 	public onDomEvent( domEvent: InputEvent ): void {
-		// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+		// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+		// @if CK_DEBUG_TYPING // 	_debouncedLine();
 		// @if CK_DEBUG_TYPING // 	console.group( `%c[InputObserver]%c ${ domEvent.type }: ${ domEvent.inputType }`,
 		// @if CK_DEBUG_TYPING // 		'color: green', 'color: default'
 		// @if CK_DEBUG_TYPING // 	);
@@ -50,17 +53,17 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 		if ( domEvent.data !== null ) {
 			data = domEvent.data;
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( `%c[InputObserver]%c event data: %c${ JSON.stringify( data ) }`,
-			// @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', 'font-weight:bold', 'color: blue;'
+			// @if CK_DEBUG_TYPING // 		'color: green; font-weight: bold', 'font-weight: bold', 'color: blue;'
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 		} else if ( dataTransfer ) {
 			data = dataTransfer.getData( 'text/plain' );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( `%c[InputObserver]%c event data transfer: %c${ JSON.stringify( data ) }`,
-			// @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', 'font-weight:bold', 'color: blue;'
+			// @if CK_DEBUG_TYPING // 		'color: green; font-weight: bold', 'font-weight: bold', 'color: blue;'
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 		}
@@ -71,20 +74,31 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 			// Future-proof: in case of multi-range fake selections being possible.
 			targetRanges = Array.from( viewDocument.selection.getRanges() );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( '%c[InputObserver]%c using fake selection:',
-			// @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', 'font-weight:bold', targetRanges,
+			// @if CK_DEBUG_TYPING // 		'color: green; font-weight: bold', 'font-weight: bold', targetRanges,
 			// @if CK_DEBUG_TYPING // 		viewDocument.selection.isFake ? 'fake view selection' : 'fake DOM parent'
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 		} else if ( domTargetRanges.length ) {
 			targetRanges = domTargetRanges.map( domRange => {
-				return view.domConverter.domRangeToView( domRange )!;
-			} );
+				// Sometimes browser provides range that starts before editable node.
+				// We try to fall back to collapsed range at the valid end position.
+				// See https://github.com/ckeditor/ckeditor5/issues/14411.
+				// See https://github.com/ckeditor/ckeditor5/issues/14050.
+				const viewStart = view.domConverter.domPositionToView( domRange.startContainer, domRange.startOffset );
+				const viewEnd = view.domConverter.domPositionToView( domRange.endContainer, domRange.endOffset );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+				if ( viewStart ) {
+					return view.createRange( viewStart, viewEnd );
+				} else if ( viewEnd ) {
+					return view.createRange( viewEnd );
+				}
+			} ).filter( ( range ): range is ViewRange => !!range );
+
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( '%c[InputObserver]%c using target ranges:',
-			// @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', 'font-weight:bold', targetRanges
+			// @if CK_DEBUG_TYPING // 		'color: green; font-weight: bold', 'font-weight: bold', targetRanges
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 		}
@@ -95,9 +109,9 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 
 			targetRanges = Array.from( view.domConverter.domSelectionToView( domSelection ).getRanges() );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( '%c[InputObserver]%c using selection ranges:',
-			// @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', 'font-weight:bold', targetRanges
+			// @if CK_DEBUG_TYPING // 		'color: green; font-weight: bold', 'font-weight: bold', targetRanges
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 		}
@@ -113,7 +127,7 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 				targetRanges: [ view.createRange( targetRanges[ 0 ].end ) ]
 			} );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.groupEnd();
 			// @if CK_DEBUG_TYPING // }
 
@@ -156,7 +170,7 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 				}
 			}
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.groupEnd();
 			// @if CK_DEBUG_TYPING // }
 
@@ -172,7 +186,7 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
 			isComposing: domEvent.isComposing
 		} );
 
-		// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+		// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 		// @if CK_DEBUG_TYPING // 	console.groupEnd();
 		// @if CK_DEBUG_TYPING // }
 	}
@@ -185,7 +199,7 @@ export default class InputObserver extends DomEventObserver<'beforeinput'> {
  * by default in all editor instances (attached by {@link module:engine/view/view~View}).
  *
  * @see module:engine/view/observer/inputobserver~InputObserver
- * @eventName beforeinput
+ * @eventName module:engine/view/document~Document#beforeinput
  * @param data Event data containing detailed information about the event.
  */
 export type ViewDocumentInputEvent = {
@@ -194,7 +208,7 @@ export type ViewDocumentInputEvent = {
 };
 
 /**
- * The value of the {@link module:engine/view/document~ViewDocumentInputEvent} event.
+ * The value of the {@link ~ViewDocumentInputEvent} event.
  */
 export interface InputEventData extends DomEventData<InputEvent> {
 

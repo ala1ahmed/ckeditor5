@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,14 @@
  * @module engine/view/textproxy
  */
 
-import TypeCheckable from './typecheckable';
+import TypeCheckable from './typecheckable.js';
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
 
-import type Document from './document';
-import type DocumentFragment from './documentfragment';
-import type Element from './element';
-import type Node from './node';
-import type Text from './text';
+import type Document from './document.js';
+import type DocumentFragment from './documentfragment.js';
+import type Element from './element.js';
+import type Node from './node.js';
+import type Text from './text.js';
 
 /**
  * TextProxy is a wrapper for substring of {@link module:engine/view/text~Text}. Instance of this class is created by
@@ -134,7 +134,7 @@ export default class TextProxy extends TypeCheckable {
 	 * Returns ancestors array of this text proxy.
 	 *
 	 * @param options Options object.
-	 * @param options.includeSelf When set to `true` {#textNode} will be also included in parent's array.
+	 * @param options.includeSelf When set to `true`, textNode will be also included in parent's array.
 	 * @param options.parentFirst When set to `true`, array will be sorted from text proxy parent to
 	 * root element, otherwise root element will be the first item in the array.
 	 * @returns Array with ancestors.
@@ -154,15 +154,15 @@ export default class TextProxy extends TypeCheckable {
 		return ancestors;
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `#${ this.data }`;
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // log() {
+	// @if CK_DEBUG_ENGINE // public log(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( 'ViewTextProxy: ' + this );
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // logExtended() {
+	// @if CK_DEBUG_ENGINE // public logExtended(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( 'ViewTextProxy: ' + this );
 	// @if CK_DEBUG_ENGINE // }
 }

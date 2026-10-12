@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,8 @@
  * @module engine/view/observer/keyobserver
  */
 
-import DomEventObserver from './domeventobserver';
-import type DomEventData from './domeventdata';
+import DomEventObserver from './domeventobserver.js';
+import type DomEventData from './domeventdata.js';
 import { getCode, type KeystrokeInfo } from '@ckeditor/ckeditor5-utils';
 
 /**
@@ -52,7 +52,7 @@ export default class KeyObserver extends DomEventObserver<'keydown' | 'keyup', K
  * {@link module:engine/view/view~View} this event is available by default.
  *
  * @see module:engine/view/observer/keyobserver~KeyObserver
- * @eventName keydown
+ * @eventName module:engine/view/document~Document#keydown
  */
 export type ViewDocumentKeyDownEvent = {
 	name: 'keydown';
@@ -68,7 +68,7 @@ export type ViewDocumentKeyDownEvent = {
  * {@link module:engine/view/view~View} this event is available by default.
  *
  * @see module:engine/view/observer/keyobserver~KeyObserver
- * @eventName keyup
+ * @eventName module:engine/view/document~Document#keyup
  */
 export type ViewDocumentKeyUpEvent = {
 	name: 'keyup';
@@ -76,8 +76,7 @@ export type ViewDocumentKeyUpEvent = {
 };
 
 /**
- * The value of both events - {@link module:engine/view/document~ViewDocumentKeyDownEvent} and
- * {@link module:engine/view/document~ViewDocumentKeyUpEvent}.
+ * The value of both events - {@link ~ViewDocumentKeyDownEvent} and {@link ~ViewDocumentKeyUpEvent}.
  */
 export interface KeyEventData extends DomEventData<KeyboardEvent>, KeystrokeInfo {
 

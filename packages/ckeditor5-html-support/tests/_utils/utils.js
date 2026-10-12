@@ -1,9 +1,9 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import { getData as getModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model';
+import { getData as getModelData } from '@ckeditor/ckeditor5-engine/src/dev-utils/model.js';
 
 /**
  * Writes the content of a model {@link module:engine/model/document~Document document} to an HTML-like string with
@@ -32,7 +32,7 @@ import { getData as getModelData } from '@ckeditor/ckeditor5-engine/src/dev-util
  * @returns {String} result.data The stringified data.
  * @returns {Object} result.attributes Indexed data attributes.
  */
-export function getModelDataWithAttributes( model, options ) {
+export function getModelDataWithAttributes( model, options = {} ) {
 	// Simplify GHS attributes as they are not very readable at this point due to object structure.
 	let counter = 1;
 	const data = getModelData( model, options ).replace( /(html.*?)="{.*?}"/g, ( fullMatch, attributeName ) => {

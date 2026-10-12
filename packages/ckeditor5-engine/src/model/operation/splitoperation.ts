@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,15 +7,16 @@
  * @module engine/model/operation/splitoperation
  */
 
-import Operation from './operation';
-import MergeOperation from './mergeoperation';
-import Position from '../position';
-import Range from '../range';
-import { _insert, _move } from './utils';
+import Operation from './operation.js';
+import MergeOperation from './mergeoperation.js';
+import Position from '../position.js';
+import Range from '../range.js';
+import { _insert, _move } from './utils.js';
 
-import type Document from '../document';
+import type Document from '../document.js';
 
 import { CKEditorError } from '@ckeditor/ckeditor5-utils';
+import type { Selectable } from '../selection.js';
 
 /**
  * Operation to split {@link module:engine/model/element~Element an element} at given
@@ -101,12 +102,29 @@ export default class SplitOperation extends Operation {
 
 	/**
 	 * Artificial range that contains all the nodes from the split element that will be moved to the new element.
-	 * The range starts at {@link ~#splitPosition} and ends in the same parent, at `POSITIVE_INFINITY` offset.
+	 * The range starts at {@link #splitPosition} and ends in the same parent, at `POSITIVE_INFINITY` offset.
 	 */
 	public get movedRange(): Range {
 		const end = this.splitPosition.getShiftedBy( Number.POSITIVE_INFINITY );
 
 		return new Range( this.splitPosition, end );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public get affectedSelectable(): Selectable {
+		// These could be positions but `Selectable` type only supports `Iterable<Range>`.
+		const ranges = [
+			Range._createFromPositionAndShift( this.splitPosition, 0 ),
+			Range._createFromPositionAndShift( this.insertionPosition, 0 )
+		];
+
+		if ( this.graveyardPosition ) {
+			ranges.push( Range._createFromPositionAndShift( this.graveyardPosition, 0 ) );
+		}
+
+		return ranges;
 	}
 
 	/**
@@ -226,7 +244,7 @@ export default class SplitOperation extends Operation {
 	}
 
 	/**
-	 * Creates `SplitOperation` object from deserilized object, i.e. from parsed JSON string.
+	 * Creates `SplitOperation` object from deserialized object, i.e. from parsed JSON string.
 	 *
 	 * @param json Deserialized JSON object.
 	 * @param document Document on which this operation will be applied.
@@ -239,9 +257,9 @@ export default class SplitOperation extends Operation {
 		return new this( splitPosition, json.howMany, insertionPosition, graveyardPosition, json.baseVersion );
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return `SplitOperation( ${ this.baseVersion } ): ${ this.splitPosition } ` +
-	// @if CK_DEBUG_ENGINE //		`( ${ this.howMany } ) -> ${ this.insertionPosition }` +
-	// @if CK_DEBUG_ENGINE //		`${ this.graveyardPosition ? ' with ' + this.graveyardPosition : '' }`;
+	// @if CK_DEBUG_ENGINE // 	`( ${ this.howMany } ) -> ${ this.insertionPosition }` +
+	// @if CK_DEBUG_ENGINE // 	`${ this.graveyardPosition ? ' with ' + this.graveyardPosition : '' }`;
 	// @if CK_DEBUG_ENGINE // }
 }

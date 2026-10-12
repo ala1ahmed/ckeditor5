@@ -1,15 +1,15 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* global window, document, Event */
 
-import ViewCollection from '../../../src/viewcollection';
-import BalloonPanelView, { generatePositions } from '../../../src/panel/balloon/balloonpanelview';
-import ButtonView from '../../../src/button/buttonview';
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
-import { Rect } from '@ckeditor/ckeditor5-utils';
+import ViewCollection from '../../../src/viewcollection.js';
+import BalloonPanelView from '../../../src/panel/balloon/balloonpanelview.js';
+import ButtonView from '../../../src/button/buttonview.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
+import { Rect, ResizeObserver, global } from '@ckeditor/ckeditor5-utils';
 
 describe( 'BalloonPanelView', () => {
 	let view;
@@ -48,6 +48,49 @@ describe( 'BalloonPanelView', () => {
 
 		it( 'creates view#content collection', () => {
 			expect( view.content ).to.be.instanceOf( ViewCollection );
+		} );
+
+		it( 'should initialize _resizeObserver with null value', () => {
+			expect( view._resizeObserver ).to.be.null;
+		} );
+	} );
+
+	describe( 'destroy()', () => {
+		it( 'should hide the panel if it is pinned', () => {
+			view.isVisible = false;
+
+			view.show();
+
+			expect( view.isVisible ).to.true;
+
+			view.destroy();
+
+			expect( view.isVisible ).to.false;
+		} );
+
+		it( 'should destroy the _resizeObserver if present', () => {
+			const target = document.createElement( 'div' );
+			const limiter = document.createElement( 'div' );
+
+			document.body.appendChild( target );
+			document.body.appendChild( limiter );
+
+			view.show();
+			view.pin( {
+				target,
+				limiter
+			} );
+
+			const spy = sinon.spy( view._resizeObserver, 'destroy' );
+
+			sinon.assert.notCalled( spy );
+
+			view.destroy();
+
+			sinon.assert.calledOnce( spy );
+
+			target.remove();
+			limiter.remove();
 		} );
 	} );
 
@@ -452,7 +495,7 @@ describe( 'BalloonPanelView', () => {
 			it( 'should put balloon on the `south east` position when `north east` is limited', () => {
 				mockBoundingBox( limiter, {
 					left: 0,
-					top: -400,
+					top: -350,
 					width: 500,
 					height: 500
 				} );
@@ -467,6 +510,286 @@ describe( 'BalloonPanelView', () => {
 				view.attachTo( { target, limiter } );
 
 				expect( view.position ).to.equal( 'arrow_nw' );
+			} );
+		} );
+
+		describe( 'limited by parent with overflow', () => {
+			let parentWithOverflow, limiter, target;
+			const OFF_THE_SCREEN_POSITION = -99999;
+
+			beforeEach( () => {
+				parentWithOverflow = document.createElement( 'div' );
+				parentWithOverflow.style.overflow = 'scroll';
+				parentWithOverflow.style.width = '100px';
+				parentWithOverflow.style.height = '100px';
+
+				limiter = document.createElement( 'div' );
+				target = document.createElement( 'div' );
+
+				// Mock parent dimensions.
+				mockBoundingBox( parentWithOverflow, {
+					left: 0,
+					top: 0,
+					width: 100,
+					height: 100
+				} );
+
+				target.style.width = '50px';
+				target.style.height = '50px';
+
+				parentWithOverflow.appendChild( limiter );
+				parentWithOverflow.appendChild( target );
+				document.body.appendChild( parentWithOverflow );
+			} );
+
+			afterEach( () => {
+				limiter.remove();
+				target.remove();
+				parentWithOverflow.remove();
+			} );
+
+			it( 'should not show the balloon if the target is not visible (vertical top)', () => {
+				mockBoundingBox( target, {
+					top: -51,
+					left: 0,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (vertical bottom)', () => {
+				mockBoundingBox( target, {
+					top: 101,
+					left: 0,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (horizontal left)', () => {
+				mockBoundingBox( target, {
+					top: 0,
+					left: -100,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (horizontal right)', () => {
+				mockBoundingBox( target, {
+					top: 0,
+					left: 101,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should get proper HTML element when callback is passed as a target', () => {
+				const callback = sinon.stub().returns( document.createElement( 'a' ) );
+
+				view.attachTo( { target: callback, limiter } );
+
+				sinon.assert.called( callback );
+			} );
+
+			it( 'should show the balloon when limiter is not defined', () => {
+				mockBoundingBox( target, {
+					top: 50,
+					left: 50,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target } );
+
+				expect( view.left ).to.equal( 25 );
+			} );
+		} );
+
+		describe( 'limited by editor with overflow', () => {
+			let limiter, target;
+			const OFF_THE_SCREEN_POSITION = -99999;
+
+			beforeEach( () => {
+				limiter = document.createElement( 'div' );
+				limiter.style.overflow = 'scroll';
+				limiter.style.width = '100px';
+				limiter.style.height = '100px';
+
+				// Mock parent dimensions.
+				mockBoundingBox( limiter, {
+					left: 0,
+					top: 0,
+					width: 100,
+					height: 100
+				} );
+
+				target = document.createElement( 'div' );
+				target.style.width = '200px';
+				target.style.height = '200px';
+
+				limiter.appendChild( target );
+				document.body.appendChild( limiter );
+			} );
+
+			afterEach( () => {
+				limiter.remove();
+				target.remove();
+			} );
+
+			it( 'should not show the balloon if the target is not visible (vertical top)', () => {
+				mockBoundingBox( target, {
+					top: -51,
+					left: 0,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (vertical bottom)', () => {
+				mockBoundingBox( target, {
+					top: 159,
+					left: 0,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (horizontal left)', () => {
+				mockBoundingBox( target, {
+					top: 0,
+					left: -100,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should not show the balloon if the target is not visible (horizontal right)', () => {
+				mockBoundingBox( target, {
+					top: 0,
+					left: 101,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
+			} );
+
+			it( 'should show the balloon when limiter is not defined', () => {
+				mockBoundingBox( target, {
+					top: 50,
+					left: 50,
+					width: 50,
+					height: 50
+				} );
+
+				view.attachTo( { target } );
+
+				expect( view.left ).to.equal( 25 );
+			} );
+		} );
+
+		describe( 'limited by editor with overflow and a parent with overflow', () => {
+			let limiter, target, parentWithOverflow, limiterParent;
+			const OFF_THE_SCREEN_POSITION = -99999;
+
+			beforeEach( () => {
+				limiter = document.createElement( 'div' );
+				limiter.style.overflow = 'scroll';
+
+				parentWithOverflow = document.createElement( 'div' );
+				parentWithOverflow.style.overflow = 'scroll';
+
+				limiterParent = document.createElement( 'div' );
+
+				target = document.createElement( 'div' );
+
+				// Mock parent dimensions.
+				mockBoundingBox( parentWithOverflow, {
+					left: 0,
+					top: 0,
+					width: 200,
+					height: 200
+				} );
+
+				// Mock limiter parent dimensions.
+				mockBoundingBox( limiterParent, {
+					left: 0,
+					top: 0,
+					width: 400,
+					height: 400
+				} );
+
+				// Mock limiter dimensions.
+				mockBoundingBox( limiter, {
+					left: 0,
+					top: 0,
+					width: 100,
+					height: 100
+				} );
+
+				limiter.appendChild( target );
+				limiterParent.appendChild( limiter );
+				parentWithOverflow.appendChild( limiterParent );
+				document.body.appendChild( parentWithOverflow );
+			} );
+
+			afterEach( () => {
+				limiter.remove();
+				target.remove();
+				parentWithOverflow.remove();
+			} );
+
+			it( 'should not show the balloon if the target is not visible ( target higher than scrollable ancestor )', () => {
+				mockBoundingBox( target, {
+					top: -250,
+					left: 0,
+					width: 200,
+					height: 200
+				} );
+
+				view.attachTo( { target, limiter } );
+
+				expect( view.top ).to.equal( OFF_THE_SCREEN_POSITION );
+				expect( view.left ).to.equal( OFF_THE_SCREEN_POSITION );
 			} );
 		} );
 	} );
@@ -690,6 +1013,144 @@ describe( 'BalloonPanelView', () => {
 
 				notRelatedElement.dispatchEvent( new Event( 'scroll' ) );
 				sinon.assert.calledTwice( attachToSpy );
+			} );
+
+			describe( 'observe element visibility', () => {
+				let clock;
+
+				beforeEach( () => {
+					clock = sinon.useFakeTimers();
+				} );
+
+				afterEach( () => {
+					clock.restore();
+				} );
+
+				it( 'should hide if the target is not visible (display: none)', () => {
+					const showSpy = sinon.spy( view, 'show' );
+					const hideSpy = sinon.spy( view, 'hide' );
+
+					target.style.display = 'none';
+					view.pin( { target, limiter } );
+
+					sinon.assert.notCalled( hideSpy );
+					sinon.assert.notCalled( showSpy );
+				} );
+
+				it( 'should not hide if the target is not visible (visibility: hidden)', () => {
+					const showSpy = sinon.spy( view, 'show' );
+					const hideSpy = sinon.spy( view, 'hide' );
+
+					target.style.visibility = 'hidden';
+					view.pin( { target, limiter } );
+
+					sinon.assert.notCalled( hideSpy );
+					sinon.assert.calledOnce( showSpy );
+				} );
+
+				it( 'should hide if the target is being hidden (display: none)', () => {
+					const resizeCallbackRef = createResizeObserverCallbackRef();
+
+					view.pin( { target, limiter } );
+					clock.tick( 100 );
+
+					expect( view.isVisible ).to.be.true;
+
+					// It's still visible, nothing changed.
+					resizeCallbackRef.current( [ { target } ] );
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.true;
+
+					// Hide the target and force call resize callback.
+					target.style.display = 'none';
+					resizeCallbackRef.current( [ { target } ] );
+
+					// It should be hidden now.
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.false;
+				} );
+
+				it( 'should not hide if the target is being hidden (visibility: hidden)', () => {
+					const resizeCallbackRef = createResizeObserverCallbackRef();
+
+					view.pin( { target, limiter } );
+					clock.tick( 100 );
+
+					expect( view.isVisible ).to.be.true;
+
+					// It's still visible, nothing changed.
+					resizeCallbackRef.current( [ { target } ] );
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.true;
+
+					// Hide the target and force call resize callback.
+					target.style.visibility = 'hidden';
+					resizeCallbackRef.current( [ { target } ] );
+
+					// It should be still visible.
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.true;
+				} );
+
+				it( 'should properly cleanup resize observer when stop pinning', () => {
+					view.pin( { target, limiter } );
+					clock.tick( 100 );
+
+					expect( view._resizeObserver ).not.to.be.null;
+
+					const destroyObserverSpy = sinon.spy( view._resizeObserver, 'destroy' );
+
+					view.unpin();
+					clock.tick( 100 );
+
+					expect( destroyObserverSpy ).to.be.calledOnce;
+					expect( view._resizeObserver ).to.be.null;
+				} );
+
+				it( 'should watch parent element visibility changes if target is text node', () => {
+					const resizeCallbackRef = createResizeObserverCallbackRef();
+					const textNode = target.appendChild(
+						document.createTextNode( 'Hello World' )
+					);
+
+					const range = document.createRange();
+					range.setStart( textNode, 1 );
+					range.setEnd( textNode, 8 );
+
+					view.pin( { target: range, limiter } );
+					clock.tick( 100 );
+
+					expect( view.isVisible ).to.be.true;
+
+					// It's still visible, nothing changed.
+					resizeCallbackRef.current( [ { target } ] );
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.true;
+
+					// Hide the target and force call resize callback.
+					target.style.display = 'none';
+					resizeCallbackRef.current( [ { target } ] );
+
+					// It should be hidden now.
+					clock.tick( 100 );
+					expect( view.isVisible ).to.be.false;
+				} );
+
+				function createResizeObserverCallbackRef() {
+					const resizeCallbackRef = { current: null };
+
+					ResizeObserver._observerInstance = null;
+					testUtils.sinon.stub( global.window, 'ResizeObserver' ).callsFake( callback => {
+						resizeCallbackRef.current = callback;
+
+						return {
+							observe() {},
+							unobserve() {}
+						};
+					} );
+
+					return resizeCallbackRef;
+				}
 			} );
 		} );
 
@@ -1145,7 +1606,7 @@ describe( 'BalloonPanelView', () => {
 		} );
 
 		it( 'should generate the same set of positions as BalloonPanelView#defaultPositions when no options specified', () => {
-			const generatedPositions = generatePositions();
+			const generatedPositions = BalloonPanelView.generatePositions();
 
 			for ( const name in generatedPositions ) {
 				const generatedResult = generatedPositions[ name ]( targetRect, balloonRect, viewportRect );
@@ -1156,7 +1617,7 @@ describe( 'BalloonPanelView', () => {
 		} );
 
 		it( 'should respect the "sideOffset" option', () => {
-			const generatedPositions = generatePositions( {
+			const generatedPositions = BalloonPanelView.generatePositions( {
 				sideOffset: BalloonPanelView.arrowSideOffset + 100
 			} );
 
@@ -1176,7 +1637,7 @@ describe( 'BalloonPanelView', () => {
 		} );
 
 		it( 'should respect the "heightOffset" option', () => {
-			const generatedPositions = generatePositions( {
+			const generatedPositions = BalloonPanelView.generatePositions( {
 				heightOffset: BalloonPanelView.arrowHeightOffset + 100
 			} );
 
@@ -1206,7 +1667,7 @@ describe( 'BalloonPanelView', () => {
 		} );
 
 		it( 'should respect the "stickyVerticalOffset" option', () => {
-			const generatedPositions = generatePositions( {
+			const generatedPositions = BalloonPanelView.generatePositions( {
 				stickyVerticalOffset: BalloonPanelView.stickyVerticalOffset + 100
 			} );
 
@@ -1224,7 +1685,7 @@ describe( 'BalloonPanelView', () => {
 		} );
 
 		it( 'should respect the "config" option', () => {
-			const generatedPositions = generatePositions( {
+			const generatedPositions = BalloonPanelView.generatePositions( {
 				config: {
 					foo: 'bar',
 					withArrow: true

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,30 +7,30 @@
  * @module engine/model/model
  */
 
-import Batch, { type BatchType } from './batch';
-import Document from './document';
-import MarkerCollection from './markercollection';
-import ModelPosition, { type PositionOffset, type PositionStickiness } from './position';
-import ModelRange from './range';
-import ModelSelection, { type PlaceOrOffset, type Selectable } from './selection';
-import OperationFactory from './operation/operationfactory';
-import DocumentSelection from './documentselection';
-import Schema from './schema';
-import Writer from './writer';
-import Node from './node';
+import Batch, { type BatchType } from './batch.js';
+import Document from './document.js';
+import MarkerCollection from './markercollection.js';
+import ModelPosition, { type PositionOffset, type PositionStickiness } from './position.js';
+import ModelRange from './range.js';
+import ModelSelection, { type PlaceOrOffset, type Selectable } from './selection.js';
+import OperationFactory from './operation/operationfactory.js';
+import DocumentSelection from './documentselection.js';
+import Schema from './schema.js';
+import Writer from './writer.js';
+import Node from './node.js';
 
-import { autoParagraphEmptyRoots } from './utils/autoparagraphing';
-import { injectSelectionPostFixer } from './utils/selection-post-fixer';
-import deleteContent from './utils/deletecontent';
-import getSelectedContent from './utils/getselectedcontent';
-import insertContent from './utils/insertcontent';
-import insertObject from './utils/insertobject';
-import modifySelection from './utils/modifyselection';
+import { autoParagraphEmptyRoots } from './utils/autoparagraphing.js';
+import { injectSelectionPostFixer } from './utils/selection-post-fixer.js';
+import deleteContent from './utils/deletecontent.js';
+import getSelectedContent from './utils/getselectedcontent.js';
+import insertContent from './utils/insertcontent.js';
+import insertObject from './utils/insertobject.js';
+import modifySelection from './utils/modifyselection.js';
 
-import type ModelDocumentFragment from './documentfragment';
-import type Item from './item';
-import type ModelElement from './element';
-import type Operation from './operation/operation';
+import type ModelDocumentFragment from './documentfragment.js';
+import type Item from './item.js';
+import type ModelElement from './element.js';
+import type Operation from './operation/operation.js';
 
 import {
 	CKEditorError,
@@ -38,14 +38,14 @@ import {
 	type DecoratedMethodEvent
 } from '@ckeditor/ckeditor5-utils';
 
-// @if CK_DEBUG_ENGINE // const { dumpTrees } = require( '../dev-utils/utils' );
+// @if CK_DEBUG_ENGINE // const { dumpTrees, initDocumentDumping } = require( '../dev-utils/utils' );
 // @if CK_DEBUG_ENGINE // const { OperationReplayer } = require( '../dev-utils/operationreplayer' ).default;
 
 /**
  * Editor's data model. Read about the model in the
- * {@glink framework/guides/architecture/editing-engine engine architecture} guide.
+ * {@glink framework/architecture/editing-engine engine architecture} guide.
  */
-export default class Model extends ObservableMixin() {
+export default class Model extends /* #__PURE__ */ ObservableMixin() {
 	/**
 	 * Model's marker collection.
 	 */
@@ -71,6 +71,9 @@ export default class Model extends ObservableMixin() {
 	 * The last created and currently used writer instance.
 	 */
 	private _currentWriter: Writer | null;
+
+	// @if CK_DEBUG_ENGINE // private _operationLogs: Array<string>;
+	// @if CK_DEBUG_ENGINE // private _appliedOperations: Array<Operation>;
 
 	constructor() {
 		super();
@@ -143,11 +146,7 @@ export default class Model extends ObservableMixin() {
 		// at the end of the conversion. `UpcastDispatcher` or at least `Conversion` class looks like a
 		// better place for this registration but both know nothing about `Schema`.
 		this.schema.register( '$marker' );
-		this.schema.addChildCheck( ( context, childDefinition ) => {
-			if ( childDefinition.name === '$marker' ) {
-				return true;
-			}
-		} );
+		this.schema.addChildCheck( () => true, '$marker' ); // Allow everywhere.
 
 		injectSelectionPostFixer( this );
 
@@ -164,9 +163,25 @@ export default class Model extends ObservableMixin() {
 			evt.return = insertObject( this, element, selection, options );
 		} );
 
+		// The base implementation for "decorated" method with remapped arguments.
+		this.on<ModelCanEditAtEvent>( 'canEditAt', evt => {
+			const canEditAt = !this.document.isReadOnly;
+
+			evt.return = canEditAt;
+
+			if ( !canEditAt ) {
+				// Prevent further processing if the selection is at non-editable place.
+				evt.stop();
+			}
+		} );
+
+		// @if CK_DEBUG_ENGINE // initDocumentDumping( this.document );
 		// @if CK_DEBUG_ENGINE // this.on( 'applyOperation', () => {
 		// @if CK_DEBUG_ENGINE // 	dumpTrees( this.document, this.document.version );
 		// @if CK_DEBUG_ENGINE // }, { priority: 'lowest' } );
+
+		// @if CK_DEBUG_ENGINE // this._operationLogs = [];
+		// @if CK_DEBUG_ENGINE // this._appliedOperations = [];
 	}
 
 	/**
@@ -223,7 +238,7 @@ export default class Model extends ObservableMixin() {
 			}
 		} catch ( err: any ) {
 			// @if CK_DEBUG // throw err;
-			/* istanbul ignore next */
+			/* istanbul ignore next -- @preserve */
 			CKEditorError.rethrowUnexpectedError( err, this );
 		}
 	}
@@ -252,10 +267,9 @@ export default class Model extends ObservableMixin() {
 	 *
 	 * By default, a new batch with the default {@link module:engine/model/batch~Batch#constructor batch type} is created.
 	 * To define the {@link module:engine/model/batch~Batch} into which you want to add your changes,
-	 * use {@link #enqueueChange#CUSTOM_BATCH}.
+	 * use {@link #enqueueChange:CUSTOM_BATCH `enqueueChange( batchOrType, callback )`}.
 	 *
 	 * @label DEFAULT_BATCH
-	 * If not defined, a new batch with the default type will be created.
 	 * @param callback Callback function which may modify the model.
 	 */
 	public enqueueChange(
@@ -285,7 +299,8 @@ export default class Model extends ObservableMixin() {
 	 * done in the outer `change()` block.
 	 *
 	 * Second, it lets you define the {@link module:engine/model/batch~Batch} into which you want to add your changes.
-	 * If you want to use default {@link module:engine/model/batch~Batch#constructor batch type}, use {@link #enqueueChange#DEFAULT_BATCH}.
+	 * If you want to use default {@link module:engine/model/batch~Batch#constructor batch type}, use
+	 * {@link #enqueueChange:DEFAULT_BATCH `enqueueChange( callback )`}.
 	 *
 	 * ```ts
 	 * model.enqueueChange( { isUndoable: false }, writer => {
@@ -335,7 +350,7 @@ export default class Model extends ObservableMixin() {
 			}
 		} catch ( err: any ) {
 			// @if CK_DEBUG // throw err;
-			/* istanbul ignore next */
+			/* istanbul ignore next -- @preserve */
 			CKEditorError.rethrowUnexpectedError( err, this );
 		}
 	}
@@ -346,64 +361,43 @@ export default class Model extends ObservableMixin() {
 	 *
 	 * This is a low-level way of changing the model. It is exposed for very specific use cases (like the undo feature).
 	 * Normally, to modify the model, you will want to use {@link module:engine/model/writer~Writer `Writer`}.
-	 * See also {@glink framework/guides/architecture/editing-engine#changing-the-model Changing the model} section
-	 * of the {@glink framework/guides/architecture/editing-engine Editing architecture} guide.
+	 * See also {@glink framework/architecture/editing-engine#changing-the-model Changing the model} section
+	 * of the {@glink framework/architecture/editing-engine Editing architecture} guide.
 	 *
 	 * @param operation The operation to apply.
 	 */
 	public applyOperation( operation: Operation ): void {
 		// @if CK_DEBUG_ENGINE // console.log( 'Applying ' + operation );
 
-		// @if CK_DEBUG_ENGINE // if ( !this._operationLogs ) {
-		// @if CK_DEBUG_ENGINE //	this._operationLogs = [];
-		// @if CK_DEBUG_ENGINE // }
-
 		// @if CK_DEBUG_ENGINE // this._operationLogs.push( JSON.stringify( operation ) );
-
-		// @if CK_DEBUG_ENGINE //if ( !this._appliedOperations ) {
-		// @if CK_DEBUG_ENGINE //	this._appliedOperations = [];
-		// @if CK_DEBUG_ENGINE //}
-
-		// @if CK_DEBUG_ENGINE //this._appliedOperations.push( operation );
+		// @if CK_DEBUG_ENGINE // this._appliedOperations.push( operation );
 
 		operation._execute();
 	}
 
-	// @if CK_DEBUG_ENGINE // getAppliedOperation() {
-	// @if CK_DEBUG_ENGINE //	if ( !this._appliedOperations ) {
-	// @if CK_DEBUG_ENGINE //		return '';
-	// @if CK_DEBUG_ENGINE //	}
+	// @if CK_DEBUG_ENGINE // public getAppliedOperation(): string {
+	// @if CK_DEBUG_ENGINE // 	if ( !this._appliedOperations ) {
+	// @if CK_DEBUG_ENGINE // 		return '';
+	// @if CK_DEBUG_ENGINE // 	}
 
-	// @if CK_DEBUG_ENGINE //	return this._appliedOperations.map( JSON.stringify ).join( '-------' );
+	// @if CK_DEBUG_ENGINE // 	return this._appliedOperations.map( operation => JSON.stringify( operation ) ).join( '-------' );
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // createReplayer( stringifiedOperations ) {
-	// @if CK_DEBUG_ENGINE //	return new OperationReplayer( this, '-------', stringifiedOperations );
+	// @if CK_DEBUG_ENGINE // public createReplayer( stringifiedOperations: string ): typeof OperationReplayer {
+	// @if CK_DEBUG_ENGINE // 	return new OperationReplayer( this, '-------', stringifiedOperations );
 	// @if CK_DEBUG_ENGINE // }
-
-	public insertContent(
-		content: Item | ModelDocumentFragment,
-		selectable: Node,
-		placeOrOffset: PlaceOrOffset,
-		...rest: Array<unknown>
-	): ModelRange;
-	public insertContent(
-		content: Item | ModelDocumentFragment,
-		selectable?: Exclude<Selectable, Node>,
-		...rest: Array<unknown>
-	): ModelRange;
 
 	/**
 	 * Inserts content at the position in the editor specified by the selection, as one would expect the paste
 	 * functionality to work.
 	 *
-	 * **Note**: If you want to insert an {@glink framework/guides/deep-dive/schema#object-elements object element}
+	 * **Note**: If you want to insert an {@glink framework/deep-dive/schema#object-elements object element}
 	 * (e.g. a {@link module:widget/utils~toWidget widget}), see {@link #insertObject} instead.
 	 *
 	 * This is a high-level method. It takes the {@link #schema schema} into consideration when inserting
 	 * the content, clears the given selection's content before inserting nodes and moves the selection
 	 * to its target position at the end of the process.
-	 * It can split elements, merge them, wrap bare text nodes with paragraphs, etc. &mdash; just like the
+	 * It can split elements, merge them, wrap bare text nodes with paragraphs, etc. &ndash; just like the
 	 * pasting feature should do.
 	 *
 	 * For lower-level methods see {@link module:engine/model/writer~Writer `Writer`}.
@@ -416,8 +410,8 @@ export default class Model extends ObservableMixin() {
 	 * Inserting elements and text nodes into the model is not enough to make CKEditor 5 render that content
 	 * to the user. CKEditor 5 implements a model-view-controller architecture and what `model.insertContent()` does
 	 * is only adding nodes to the model. Additionally, you need to define
-	 * {@glink framework/guides/architecture/editing-engine#conversion converters} between the model and view
-	 * and define those nodes in the {@glink framework/guides/architecture/editing-engine#schema schema}.
+	 * {@glink framework/architecture/editing-engine#conversion converters} between the model and view
+	 * and define those nodes in the {@glink framework/architecture/editing-engine#schema schema}.
 	 *
 	 * So, while this method may seem similar to CKEditor 4 `editor.insertHtml()` (in fact, both methods
 	 * are used for paste-like content insertion), the CKEditor 5 method cannot be use to insert arbitrary HTML
@@ -547,29 +541,8 @@ export default class Model extends ObservableMixin() {
 		return this.fire<ModelInsertContentEvent>( 'insertContent', [ content, selection, placeOrOffset, ...rest ] )!;
 	}
 
-	public insertObject(
-		element: ModelElement,
-		selectable: Node,
-		placeOrOffset: PlaceOrOffset,
-		options?: {
-			findOptimalPosition?: 'auto' | 'before' | 'after';
-			setSelection?: 'on' | 'after';
-		},
-		...rest: Array<unknown>
-	): ModelRange;
-	public insertObject(
-		element: ModelElement,
-		selectable?: Exclude<Selectable, Node>,
-		placeOrOffset?: null,
-		options?: {
-			findOptimalPosition?: 'auto' | 'before' | 'after';
-			setSelection?: 'on' | 'after';
-		},
-		...rest: Array<unknown>
-	): ModelRange;
-
 	/**
-	 * Inserts an {@glink framework/guides/deep-dive/schema#object-elements object element} at a specific position in the editor content.
+	 * Inserts an {@glink framework/deep-dive/schema#object-elements object element} at a specific position in the editor content.
 	 *
 	 * This is a high-level API:
 	 * * It takes the {@link #schema schema} into consideration,
@@ -588,8 +561,8 @@ export default class Model extends ObservableMixin() {
 	 * * Inserting object into the model is not enough to make CKEditor 5 render that content to the user.
 	 * CKEditor 5 implements a model-view-controller architecture and what `model.insertObject()` does
 	 * is only adding nodes to the model. Additionally, you need to define
-	 * {@glink framework/guides/architecture/editing-engine#conversion converters} between the model and view
-	 * and define those nodes in the {@glink framework/guides/architecture/editing-engine#schema schema}.
+	 * {@glink framework/architecture/editing-engine#conversion converters} between the model and view
+	 * and define those nodes in the {@glink framework/architecture/editing-engine#schema schema}.
 	 *
 	 * # Examples
 	 *
@@ -722,6 +695,7 @@ export default class Model extends ObservableMixin() {
 			doNotResetEntireContent?: boolean;
 			doNotAutoparagraph?: boolean;
 			direction?: 'forward' | 'backward';
+			[ i: string ]: unknown;
 		}
 	): void {
 		deleteContent( this, selection, options );
@@ -859,6 +833,25 @@ export default class Model extends ObservableMixin() {
 	}
 
 	/**
+	 * Check whether given selectable is at a place in the model where it can be edited (returns `true`) or not (returns `false`).
+	 *
+	 * Should be used instead of {@link module:core/editor/editor~Editor#isReadOnly} to check whether a user action can happen at
+	 * given selectable. It may be decorated and used differently in different environment (e.g. multi-root editor can disable
+	 * a particular root).
+	 *
+	 * This method is decorated. Although this method accepts any parameter of `Selectable` type, the
+	 * {@link ~Model#event:canEditAt `canEditAt` event} is fired with `selectable` normalized to an instance of
+	 * {@link module:engine/model/selection~Selection} or {@link module:engine/model/documentselection~DocumentSelection}
+	 *
+	 * @fires canEditAt
+	 */
+	public canEditAt( selectable: Selectable ): boolean {
+		const selection = normalizeSelectable( selectable );
+
+		return this.fire<ModelCanEditAtEvent>( 'canEditAt', [ selection ] )!;
+	}
+
+	/**
 	 * Creates a position from the given root and path in that root.
 	 *
 	 * Note: This method is also available as
@@ -983,8 +976,37 @@ export default class Model extends ObservableMixin() {
 		return ModelRange._createOn( item );
 	}
 
+	/**
+	 * Creates a new selection instance based on the given {@link module:engine/model/selection~Selectable selectable}
+	 * or creates an empty selection if no arguments were passed.
+	 *
+	 * Note: This method is also available as
+	 * {@link module:engine/model/writer~Writer#createSelection `Writer#createSelection()`}.
+	 *
+	 * ```ts
+	 * // Creates selection at the given offset in the given element.
+	 * const paragraph = writer.createElement( 'paragraph' );
+	 * const selection = writer.createSelection( paragraph, offset );
+	 *
+	 * // Creates a range inside an {@link module:engine/model/element~Element element} which starts before the
+	 * // first child of that element and ends after the last child of that element.
+	 * const selection = writer.createSelection( paragraph, 'in' );
+	 *
+	 * // Creates a range on an {@link module:engine/model/item~Item item} which starts before the item and ends
+	 * // just after the item.
+	 * const selection = writer.createSelection( paragraph, 'on' );
+	 *
+	 * // Additional options (`'backward'`) can be specified as the last argument.
+	 *
+	 * // Creates backward selection.
+	 * const selection = writer.createSelection( element, 'in', { backward: true } );
+	 * ```
+	 *
+	 * See also: {@link #createSelection:SELECTABLE `createSelection( selectable, options )`}.
+	 *
+	 * @label NODE_OFFSET
+	 */
 	public createSelection( selectable: Node, placeOrOffset: PlaceOrOffset, options?: { backward?: boolean } ): ModelSelection;
-	public createSelection( selectable?: Exclude<Selectable, Node>, options?: { backward?: boolean } ): ModelSelection;
 
 	/**
 	 * Creates a new selection instance based on the given {@link module:engine/model/selection~Selectable selectable}
@@ -1019,24 +1041,18 @@ export default class Model extends ObservableMixin() {
 	 * const position = writer.createPositionFromPath( root, path );
 	 * const selection = writer.createSelection( position );
 	 *
-	 * // Creates selection at the given offset in the given element.
-	 * const paragraph = writer.createElement( 'paragraph' );
-	 * const selection = writer.createSelection( paragraph, offset );
-	 *
-	 * // Creates a range inside an {@link module:engine/model/element~Element element} which starts before the
-	 * // first child of that element and ends after the last child of that element.
-	 * const selection = writer.createSelection( paragraph, 'in' );
-	 *
-	 * // Creates a range on an {@link module:engine/model/item~Item item} which starts before the item and ends
-	 * // just after the item.
-	 * const selection = writer.createSelection( paragraph, 'on' );
-	 *
 	 * // Additional options (`'backward'`) can be specified as the last argument.
 	 *
 	 * // Creates backward selection.
 	 * const selection = writer.createSelection( range, { backward: true } );
 	 * ```
+	 *
+	 * See also: {@link #createSelection:NODE_OFFSET `createSelection( node, placeOrOffset, options )`}.
+	 *
+	 * @label SELECTABLE
 	 */
+	public createSelection( selectable?: Exclude<Selectable, Node>, options?: { backward?: boolean } ): ModelSelection;
+
 	public createSelection( ...args: ConstructorParameters<typeof ModelSelection> ): ModelSelection {
 		return new ModelSelection( ...args );
 	}
@@ -1051,7 +1067,7 @@ export default class Model extends ObservableMixin() {
 	 *
 	 * @param type {@link module:engine/model/batch~Batch#constructor The type} of the batch.
 	 */
-	public createBatch( type: BatchType ): Batch {
+	public createBatch( type?: BatchType ): Batch {
 		return new Batch( type );
 	}
 
@@ -1077,7 +1093,6 @@ export default class Model extends ObservableMixin() {
 	/**
 	 * Common part of {@link module:engine/model/model~Model#change} and {@link module:engine/model/model~Model#enqueueChange}
 	 * which calls callbacks and returns array of values returned by these callbacks.
-	 *
 	 */
 	private _runPendingChanges() {
 		const ret = [];
@@ -1126,7 +1141,13 @@ function normalizeSelectable(
 	}
 
 	if ( selectable instanceof Node ) {
-		return new ModelSelection( selectable, placeOrOffset! );
+		if ( placeOrOffset || placeOrOffset === 0 ) {
+			return new ModelSelection( selectable, placeOrOffset );
+		} else if ( selectable.is( 'rootElement' ) ) {
+			return new ModelSelection( selectable, 'in' );
+		} else {
+			return new ModelSelection( selectable, 'on' );
+		}
 	}
 
 	return new ModelSelection( selectable );
@@ -1137,7 +1158,7 @@ function normalizeSelectable(
  * {@link module:engine/model/model~Model#change} block.
  *
  * @internal
- * @eventName _beforeChanges
+ * @eventName ~Model#_beforeChanges
  */
 export type BeforeChangesEvent = {
 	name: '_beforeChanges';
@@ -1149,7 +1170,7 @@ export type BeforeChangesEvent = {
  * {@link module:engine/model/model~Model#change} block.
  *
  * @internal
- * @eventName _afterChanges
+ * @eventName ~Model#_afterChanges
  */
 export type AfterChangesEvent = {
 	name: '_afterChanges';
@@ -1158,7 +1179,7 @@ export type AfterChangesEvent = {
 
 /**
  * Fired every time any {@link module:engine/model/operation/operation~Operation operation} is applied on the model
- * using {@link #applyOperation}.
+ * using {@link ~Model#applyOperation}.
  *
  * Note that this event is suitable only for very specific use-cases. Use it if you need to listen to every single operation
  * applied on the document. However, in most cases {@link module:engine/model/document~Document#event:change} should
@@ -1172,22 +1193,22 @@ export type AfterChangesEvent = {
  * * with `low` priority {@link module:engine/model/liveposition~LivePosition} and {@link module:engine/model/liverange~LiveRange}
  * update themselves.
  *
- * @eventName applyOperation
+ * @eventName ~Model#applyOperation
  * @param args Arguments of the `applyOperation` which is an array with a single element - applied
  * {@link module:engine/model/operation/operation~Operation operation}.
  */
 export type ModelApplyOperationEvent = DecoratedMethodEvent<Model, 'applyOperation'>;
 
 /**
- * Event fired when {@link #insertContent} method is called.
+ * Event fired when {@link ~Model#insertContent} method is called.
  *
- * The {@link #insertContent default action of that method} is implemented as a
+ * The {@link ~Model#insertContent default action of that method} is implemented as a
  * listener to this event so it can be fully customized by the features.
  *
- * **Note** The `selectable` parameter for the {@link #insertContent} is optional. When `undefined` value is passed the method uses
+ * **Note** The `selectable` parameter for the {@link ~Model#insertContent} is optional. When `undefined` value is passed the method uses
  * {@link module:engine/model/document~Document#selection document selection}.
  *
- * @eventName insertContent
+ * @eventName ~Model#insertContent
  * @param args The arguments passed to the original method.
  */
 export type ModelInsertContentEvent = {
@@ -1201,15 +1222,15 @@ export type ModelInsertContentEvent = {
 };
 
 /**
- * Event fired when the {@link #insertObject} method is called.
+ * Event fired when the {@link ~Model#insertObject} method is called.
  *
- * The {@link #insertObject default action of that method} is implemented as a
+ * The {@link ~Model#insertObject default action of that method} is implemented as a
  * listener to this event so it can be fully customized by the features.
  *
- * **Note** The `selectable` parameter for the {@link #insertObject} is optional. When `undefined` value is passed the method uses
+ * **Note** The `selectable` parameter for the {@link ~Model#insertObject} is optional. When `undefined` value is passed the method uses
  * {@link module:engine/model/document~Document#selection document selection}.
  *
- * @eventName insertObject
+ * @eventName ~Model#insertObject
  * @param args The arguments passed to the original method.
  */
 export type ModelInsertObjectEvent = {
@@ -1227,34 +1248,54 @@ export type ModelInsertObjectEvent = {
 };
 
 /**
- * Event fired when {@link #deleteContent} method is called.
+ * Event fired when {@link ~Model#deleteContent} method is called.
  *
- * The {@link #deleteContent default action of that method} is implemented as a
- * listener to this event so it can be fully customized by the features.
+ * The {@link ~Model#deleteContent default action of that method} is implemented as a
+ * listener to this event, so it can be fully customized by the features.
  *
- * @eventName deleteContent
+ * @eventName ~Model#deleteContent
  * @param args The arguments passed to the original method.
  */
 export type ModelDeleteContentEvent = DecoratedMethodEvent<Model, 'deleteContent'>;
 
 /**
- * Event fired when {@link #modifySelection} method is called.
+ * Event fired when {@link ~Model#modifySelection} method is called.
  *
- * The {@link #modifySelection default action of that method} is implemented as a
- * listener to this event so it can be fully customized by the features.
+ * The {@link ~Model#modifySelection default action of that method} is implemented as a
+ * listener to this event, so it can be fully customized by the features.
  *
- * @eventName modifySelection
+ * @eventName ~Model#modifySelection
  * @param args The arguments passed to the original method.
  */
 export type ModelModifySelectionEvent = DecoratedMethodEvent<Model, 'modifySelection'>;
 
 /**
- * Event fired when {@link #getSelectedContent} method is called.
+ * Event fired when {@link ~Model#getSelectedContent} method is called.
  *
- * The {@link #getSelectedContent default action of that method} is implemented as a
- * listener to this event so it can be fully customized by the features.
+ * The {@link ~Model#getSelectedContent default action of that method} is implemented as a
+ * listener to this event, so it can be fully customized by the features.
  *
- * @eventName getSelectedContent
+ * @eventName ~Model#getSelectedContent
  * @param args The arguments passed to the original method.
  */
 export type ModelGetSelectedContentEvent = DecoratedMethodEvent<Model, 'getSelectedContent'>;
+
+/**
+ * Event fired when {@link ~Model#canEditAt} method is called.
+ *
+ * The {@link ~Model#canEditAt default action of that method} is implemented as a
+ * listener to this event, so it can be fully customized by the features.
+ *
+ * Although the original method accepts any parameter of `Selectable` type, this event is fired with `selectable` normalized
+ * to an instance of {@link module:engine/model/selection~Selection} or {@link module:engine/model/documentselection~DocumentSelection}.
+ *
+ * @eventName ~Model#canEditAt
+ * @param args The arguments passed to the original method.
+ */
+export type ModelCanEditAtEvent = {
+	name: 'canEditAt';
+	args: [ [
+		selectable?: ModelSelection | DocumentSelection
+	] ];
+	return: boolean;
+};

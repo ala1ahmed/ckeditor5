@@ -1,26 +1,37 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-/* globals document */
+/* globals window, document, Event */
 
-import LinkActionsView from '../../src/ui/linkactionsview';
-import View from '@ckeditor/ckeditor5-ui/src/view';
-import { keyCodes } from '@ckeditor/ckeditor5-utils/src/keyboard';
-import KeystrokeHandler from '@ckeditor/ckeditor5-utils/src/keystrokehandler';
-import FocusTracker from '@ckeditor/ckeditor5-utils/src/focustracker';
-import FocusCycler from '@ckeditor/ckeditor5-ui/src/focuscycler';
-import ViewCollection from '@ckeditor/ckeditor5-ui/src/viewcollection';
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
+import LinkActionsView from '../../src/ui/linkactionsview.js';
+import View from '@ckeditor/ckeditor5-ui/src/view.js';
+import { keyCodes } from '@ckeditor/ckeditor5-utils/src/keyboard.js';
+import KeystrokeHandler from '@ckeditor/ckeditor5-utils/src/keystrokehandler.js';
+import FocusTracker from '@ckeditor/ckeditor5-utils/src/focustracker.js';
+import FocusCycler from '@ckeditor/ckeditor5-ui/src/focuscycler.js';
+import ViewCollection from '@ckeditor/ckeditor5-ui/src/viewcollection.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
 
 describe( 'LinkActionsView', () => {
-	let view;
+	let view, editorElement, isScrollableToTarget, scrollToTarget;
 
 	testUtils.createSinonSandbox();
 
-	beforeEach( () => {
-		view = new LinkActionsView( { t: val => val } );
+	beforeEach( async () => {
+		editorElement = document.createElement( 'div' );
+		document.body.appendChild( editorElement );
+
+		isScrollableToTarget = sinon.stub();
+		scrollToTarget = sinon.stub();
+
+		const createBookmarkCallbacks = {
+			isScrollableToTarget,
+			scrollToTarget
+		};
+
+		view = new LinkActionsView( { t: () => {} }, undefined, createBookmarkCallbacks );
 		view.render();
 		document.body.appendChild( view.element );
 	} );
@@ -28,6 +39,7 @@ describe( 'LinkActionsView', () => {
 	afterEach( () => {
 		view.element.remove();
 		view.destroy();
+		editorElement.remove();
 	} );
 
 	describe( 'constructor()', () => {
@@ -62,6 +74,21 @@ describe( 'LinkActionsView', () => {
 
 		it( 'should create #_focusables view collection', () => {
 			expect( view._focusables ).to.be.instanceOf( ViewCollection );
+		} );
+
+		it( 'should create #_linkConfig as empty object by default', () => {
+			expect( view._linkConfig ).to.be.empty;
+		} );
+
+		it( 'should create #_linkConfig containing config object passed as argument', () => {
+			const customConfig = { allowedProtocols: [ 'https', 'ftps', 'tel', 'sms' ] };
+
+			const view = new LinkActionsView( { t: () => {} }, customConfig );
+			view.render();
+
+			expect( view._linkConfig ).to.equal( customConfig );
+
+			view.destroy();
 		} );
 
 		it( 'should fire `edit` event on editButtonView#execute', () => {
@@ -122,6 +149,157 @@ describe( 'LinkActionsView', () => {
 					view.href = 'foo';
 
 					expect( view.previewButtonView.isEnabled ).to.be.true;
+				} );
+
+				describe( 'when href starts with `#`', () => {
+					describe( 'and Bookmark plugin is loaded', () => {
+						it( 'should scroll to bookmark when bookmark `id` matches hash `url`', () => {
+							isScrollableToTarget.returns( true );
+
+							view.href = '#foo';
+
+							expect( view.previewButtonView.element.getAttribute( 'href' ) ).to.equal( '#foo' );
+
+							const spy = sinon.spy();
+							const windowOpenStub = sinon.stub( window, 'open' );
+
+							view.previewButtonView.on( 'execute', spy );
+							view.previewButtonView.element.dispatchEvent( new Event( 'click' ) );
+							sinon.assert.callCount( spy, 1 );
+							sinon.assert.callCount( scrollToTarget, 1 );
+							sinon.assert.callCount( windowOpenStub, 0 );
+						} );
+
+						it( 'should open link when bookmark `id` does not matches hash `url`', () => {
+							isScrollableToTarget.returns( false );
+
+							view.href = '#foo';
+
+							expect( view.previewButtonView.element.getAttribute( 'href' ) ).to.equal( '#foo' );
+
+							const spy = sinon.spy();
+							const windowOpenStub = sinon.stub( window, 'open' );
+
+							view.previewButtonView.on( 'execute', spy );
+							view.previewButtonView.element.dispatchEvent( new Event( 'click' ) );
+							sinon.assert.callCount( spy, 1 );
+							sinon.assert.callCount( scrollToTarget, 0 );
+							sinon.assert.callCount( windowOpenStub, 1 );
+						} );
+					} );
+
+					describe( 'and Bookmark plugin is not loaded', () => {
+						let view, editorElement, isScrollableToTarget, scrollToTarget;
+
+						testUtils.createSinonSandbox();
+
+						beforeEach( async () => {
+							editorElement = document.createElement( 'div' );
+							document.body.appendChild( editorElement );
+
+							isScrollableToTarget = sinon.stub();
+							scrollToTarget = sinon.stub();
+
+							const createBookmarkCallbacks = {
+								isScrollableToTarget,
+								scrollToTarget
+							};
+
+							view = new LinkActionsView( { t: () => {} }, undefined, createBookmarkCallbacks );
+							view.render();
+							document.body.appendChild( view.element );
+						} );
+
+						afterEach( () => {
+							view.element.remove();
+							view.destroy();
+							editorElement.remove();
+						} );
+
+						it( 'should open link', () => {
+							isScrollableToTarget.returns( false );
+
+							view.href = '#foo';
+
+							expect( view.previewButtonView.element.getAttribute( 'href' ) ).to.equal( '#foo' );
+
+							const spy = sinon.spy();
+							const windowOpenStub = sinon.stub( window, 'open' );
+
+							view.previewButtonView.on( 'execute', spy );
+							view.previewButtonView.element.dispatchEvent( new Event( 'click' ) );
+							sinon.assert.callCount( spy, 1 );
+							sinon.assert.callCount( scrollToTarget, 0 );
+							sinon.assert.callCount( windowOpenStub, 1 );
+						} );
+					} );
+				} );
+
+				describe( 'when href not starts with `#`', () => {
+					describe( 'and Bookmark plugin is loaded', () => {
+						it( 'should open link', () => {
+							isScrollableToTarget.returns( false );
+
+							view.href = 'foo';
+
+							expect( view.previewButtonView.element.getAttribute( 'href' ) ).to.equal( 'foo' );
+
+							const spy = sinon.spy();
+							const windowOpenStub = sinon.stub( window, 'open' );
+
+							view.previewButtonView.on( 'execute', spy );
+							view.previewButtonView.element.dispatchEvent( new Event( 'click' ) );
+							sinon.assert.callCount( spy, 1 );
+							sinon.assert.callCount( scrollToTarget, 0 );
+							sinon.assert.callCount( windowOpenStub, 1 );
+						} );
+					} );
+
+					describe( 'and Bookmark plugin is not loaded', () => {
+						let view, editorElement, isScrollableToTarget, scrollToTarget;
+
+						testUtils.createSinonSandbox();
+
+						beforeEach( async () => {
+							editorElement = document.createElement( 'div' );
+							document.body.appendChild( editorElement );
+
+							isScrollableToTarget = sinon.stub();
+							scrollToTarget = sinon.stub();
+
+							const createBookmarkCallbacks = {
+								isScrollableToTarget,
+								scrollToTarget
+							};
+
+							view = new LinkActionsView( { t: () => {} }, undefined, createBookmarkCallbacks );
+							view.render();
+							document.body.appendChild( view.element );
+						} );
+
+						afterEach( () => {
+							view.element.remove();
+							view.destroy();
+							editorElement.remove();
+						} );
+
+						it( 'should open link', () => {
+							isScrollableToTarget.returns( false );
+
+							view.href = 'foo';
+
+							expect( view.previewButtonView.element.getAttribute( 'href' ) ).to.equal( 'foo' );
+
+							const spy = sinon.spy();
+							const windowOpenStub = sinon.stub( window, 'open' );
+
+							view.previewButtonView.on( 'execute', spy );
+							view.previewButtonView.element.dispatchEvent( new Event( 'click' ) );
+							sinon.assert.callCount( spy, 1 );
+							sinon.assert.callCount( scrollToTarget, 0 );
+							sinon.assert.callCount( windowOpenStub, 1 );
+						} );
+					} );
 				} );
 			} );
 		} );

@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,8 +7,9 @@
  * @module engine/view/observer/clickobserver
  */
 
-import DomEventObserver from './domeventobserver';
-import type DomEventData from './domeventdata';
+import DomEventObserver from './domeventobserver.js';
+import type DomEventData from './domeventdata.js';
+import type { BubblingEvent } from './bubblingemittermixin.js';
 
 /**
  * {@link module:engine/view/document~Document#event:click Click} event observer.
@@ -40,10 +41,10 @@ export default class ClickObserver extends DomEventObserver<'click'> {
  * to {@link module:engine/view/view~View} by a {@link module:engine/view/view~View#addObserver} method.
  *
  * @see module:engine/view/observer/clickobserver~ClickObserver
- * @eventName click
+ * @eventName module:engine/view/document~Document#click
  * @param data Event data.
  */
-export type ViewDocumentClickEvent = {
+export type ViewDocumentClickEvent = BubblingEvent<{
 	name: 'click';
 	args: [ data: DomEventData<MouseEvent> ];
-};
+}>;

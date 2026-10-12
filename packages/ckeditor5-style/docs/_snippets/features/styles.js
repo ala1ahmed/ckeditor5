@@ -1,45 +1,50 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals console, window, document */
 
-import ClassicEditor from '@ckeditor/ckeditor5-editor-classic/src/classiceditor';
+import { ClassicEditor } from '@ckeditor/ckeditor5-editor-classic';
 
-import ArticlePluginSet from '@ckeditor/ckeditor5-core/tests/_utils/articlepluginset';
-import CloudServices from '@ckeditor/ckeditor5-cloud-services/src/cloudservices';
-import CodeBlock from '@ckeditor/ckeditor5-code-block/src/codeblock';
-import Strikethrough from '@ckeditor/ckeditor5-basic-styles/src/strikethrough';
-import Code from '@ckeditor/ckeditor5-basic-styles/src/code';
-import HorizontalLine from '@ckeditor/ckeditor5-horizontal-line/src/horizontalline';
-import Style from '@ckeditor/ckeditor5-style/src/style';
-import GeneralHtmlSupport from '@ckeditor/ckeditor5-html-support/src/generalhtmlsupport';
-import Highlight from '@ckeditor/ckeditor5-highlight/src/highlight';
-import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config';
+import { Code, Strikethrough } from '@ckeditor/ckeditor5-basic-styles';
+import { CloudServices } from '@ckeditor/ckeditor5-cloud-services';
+import { CS_CONFIG } from '@ckeditor/ckeditor5-cloud-services/tests/_utils/cloud-services-config.js';
+import { CodeBlock } from '@ckeditor/ckeditor5-code-block';
+import { CKBox, CKBoxImageEdit } from '@ckeditor/ckeditor5-ckbox';
+import ArticlePluginSet from '@ckeditor/ckeditor5-core/tests/_utils/articlepluginset.js';
+import { Highlight } from '@ckeditor/ckeditor5-highlight';
+import { HorizontalLine } from '@ckeditor/ckeditor5-horizontal-line';
+import { GeneralHtmlSupport } from '@ckeditor/ckeditor5-html-support';
+import {
+	PictureEditing,
+	Image,
+	ImageCaption,
+	ImageInsert,
+	ImageResize,
+	ImageStyle,
+	ImageToolbar,
+	ImageUpload
+} from '@ckeditor/ckeditor5-image';
+import { Style } from '@ckeditor/ckeditor5-style';
+
+import { TOKEN_URL } from '@ckeditor/ckeditor5-ckbox/tests/_utils/ckbox-config.js';
 
 ClassicEditor
 	.create( document.querySelector( '#snippet-styles' ), {
 		plugins: [
-			ArticlePluginSet, CloudServices,
+			ArticlePluginSet, CloudServices, CKBox, CKBoxImageEdit,
+			PictureEditing, Image, ImageCaption, ImageInsert, ImageResize, ImageStyle, ImageToolbar, ImageUpload,
 			Code, CodeBlock, Strikethrough, HorizontalLine, GeneralHtmlSupport, Style, Highlight
 		],
 		toolbar: {
 			items: [
-				'style',
-				'|',
-				'heading',
-				'|',
-				'bold',
-				'italic',
-				'strikethrough',
-				'link',
-				'|',
-				'highlight',
-				'code',
-				'codeBlock',
-				'blockQuote',
-				'horizontalLine'
+				'undo', 'redo',
+				'|', 'style', '|', 'heading',
+				'|', 'bold', 'italic', 'strikethrough', 'code',
+				'-', 'link', 'insertImage', 'insertTable', 'highlight', 'codeBlock',
+				'blockQuote', 'mediaEmbed', 'codeBlock', 'horizontalLine',
+				'|', 'bulletedList', 'numberedList', 'outdent', 'indent'
 			],
 			shouldNotGroupWhenFull: true
 		},
@@ -94,7 +99,10 @@ ClassicEditor
 			]
 		},
 		image: {
-			toolbar: [ 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|', 'toggleImageCaption', 'imageTextAlternative' ]
+			toolbar: [
+				'imageStyle:inline', 'imageStyle:block', 'imageStyle:wrapText', '|',
+				'toggleImageCaption', 'imageTextAlternative', 'ckboxImageEdit'
+			]
 		},
 		codeBlock: {
 			languages: [
@@ -109,14 +117,20 @@ ClassicEditor
 			viewportOffset: {
 				top: window.getViewportTopOffsetConfig()
 			}
-		}
+		},
+		ckbox: {
+			tokenUrl: TOKEN_URL,
+			allowExternalImagesEditing: [ /^data:/, 'origin', /ckbox/ ],
+			forceDemoLabel: true
+		},
+		licenseKey: 'GPL'
 	} )
 	.then( editor => {
 		window.editor = editor;
 
 		window.attachTourBalloon( {
 			target: window.findToolbarItem( editor.ui.view.toolbar,
-				item => item.buttonView && item.buttonView.label === 'Styles' ),
+				item => item.buttonView && item.buttonView.label === 'Article category' ),
 			text: 'Click to apply styles.',
 			editor,
 			tippyOptions: {

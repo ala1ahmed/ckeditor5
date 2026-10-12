@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,9 +7,9 @@
  * @module engine/model/rootelement
  */
 
-import Element from './element';
+import Element from './element.js';
 
-import type Document from './document';
+import type Document from './document.js';
 
 /**
  * Type of {@link module:engine/model/element~Element} that is a root of a model tree.
@@ -24,6 +24,18 @@ export default class RootElement extends Element {
 	 * Document that is an owner of this root.
 	 */
 	private readonly _document: Document;
+
+	/**
+	 * @internal
+	 */
+	public _isAttached = true;
+
+	/**
+	 * Informs if the root element is loaded (default).
+	 *
+	 * @internal
+	 */
+	public _isLoaded = true;
 
 	/**
 	 * Creates root element.
@@ -47,7 +59,20 @@ export default class RootElement extends Element {
 	}
 
 	/**
-	 * Converts `RootElement` instance to `string` containing it's name.
+	 * Informs if the root element is currently attached to the document, or not.
+	 *
+	 * A detached root is equivalent to being removed and cannot contain any children or markers.
+	 *
+	 * By default, a newly added root is attached. It can be detached using
+	 * {@link module:engine/model/writer~Writer#detachRoot `Writer#detachRoot`}. A detached root can be re-attached again using
+	 * {@link module:engine/model/writer~Writer#addRoot `Writer#addRoot`}.
+	 */
+	public override isAttached(): boolean {
+		return this._isAttached;
+	}
+
+	/**
+	 * Converts `RootElement` instance to `string` containing its name.
 	 *
 	 * @returns `RootElement` instance converted to `string`.
 	 */
@@ -55,11 +80,11 @@ export default class RootElement extends Element {
 		return this.rootName;
 	}
 
-	// @if CK_DEBUG_ENGINE // toString() {
+	// @if CK_DEBUG_ENGINE // public override toString(): string {
 	// @if CK_DEBUG_ENGINE // 	return this.rootName;
 	// @if CK_DEBUG_ENGINE // }
 
-	// @if CK_DEBUG_ENGINE // log() {
+	// @if CK_DEBUG_ENGINE // public override log(): void {
 	// @if CK_DEBUG_ENGINE // 	console.log( 'ModelRootElement: ' + this );
 	// @if CK_DEBUG_ENGINE // }
 }

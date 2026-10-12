@@ -1,30 +1,34 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals setTimeout, document */
 
-import EmitterMixin from '@ckeditor/ckeditor5-utils/src/emittermixin';
+import EmitterMixin from '@ckeditor/ckeditor5-utils/src/emittermixin.js';
 
-import EditingController from '../../src/controller/editingcontroller';
+import EditingController from '../../src/controller/editingcontroller.js';
 
-import View from '../../src/view/view';
+import View from '../../src/view/view.js';
 
-import Mapper from '../../src/conversion/mapper';
-import DowncastDispatcher from '../../src/conversion/downcastdispatcher';
+import Mapper from '../../src/conversion/mapper.js';
+import DowncastDispatcher from '../../src/conversion/downcastdispatcher.js';
 
-import DowncastHelpers from '../../src/conversion/downcasthelpers';
-import Model from '../../src/model/model';
-import ModelPosition from '../../src/model/position';
-import ModelRange from '../../src/model/range';
-import ModelDocumentFragment from '../../src/model/documentfragment';
+import DowncastHelpers from '../../src/conversion/downcasthelpers.js';
+import Model from '../../src/model/model.js';
+import ModelPosition from '../../src/model/position.js';
+import ModelRange from '../../src/model/range.js';
+import ModelDocumentFragment from '../../src/model/documentfragment.js';
 
-import { getData as getModelData, parse } from '../../src/dev-utils/model';
-import { getData as getViewData } from '../../src/dev-utils/view';
-import { StylesProcessor } from '../../src/view/stylesmap';
+import { getData as getModelData, setData as setModelData, parse } from '../../src/dev-utils/model.js';
+import { getData as getViewData } from '../../src/dev-utils/view.js';
+import { StylesProcessor } from '../../src/view/stylesmap.js';
 
-import { expectToThrowCKEditorError } from '@ckeditor/ckeditor5-utils/tests/_utils/utils';
+import { expectToThrowCKEditorError } from '@ckeditor/ckeditor5-utils/tests/_utils/utils.js';
+import VirtualTestEditor from '@ckeditor/ckeditor5-core/tests/_utils/virtualtesteditor.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
+import { Typing } from '@ckeditor/ckeditor5-typing';
+import { Enter } from '@ckeditor/ckeditor5-enter';
 
 describe( 'EditingController', () => {
 	describe( 'constructor()', () => {
@@ -625,5 +629,341 @@ describe( 'EditingController', () => {
 			editing.reconvertItem( model.document.getRoot().getChild( 0 ) );
 			sinon.assert.calledOnce( changeSpy );
 		} );
+	} );
+
+	describe( 'beforeInput target ranges fixing', () => {
+		let editor, model, view, viewDocument, viewRoot, beforeInputSpy, deleteSpy, insertTextSpy, enterSpy;
+
+		testUtils.createSinonSandbox();
+
+		beforeEach( async () => {
+			editor = await VirtualTestEditor.create( { plugins: [ Typing, Enter ] } );
+			model = editor.model;
+			view = editor.editing.view;
+			viewDocument = view.document;
+			viewRoot = viewDocument.getRoot();
+
+			beforeInputSpy = testUtils.sinon.spy();
+			viewDocument.on( 'beforeinput', beforeInputSpy, { context: '$capture', priority: 'highest' } );
+
+			deleteSpy = testUtils.sinon.stub().callsFake( evt => evt.stop() );
+			viewDocument.on( 'delete', deleteSpy, { context: '$capture', priority: 'highest' } );
+
+			insertTextSpy = testUtils.sinon.stub().callsFake( evt => evt.stop() );
+			viewDocument.on( 'insertText', insertTextSpy, { context: '$capture', priority: 'highest' } );
+
+			enterSpy = testUtils.sinon.stub().callsFake( evt => evt.stop() );
+			viewDocument.on( 'enter', enterSpy, { context: '$capture', priority: 'highest' } );
+
+			// Stub `editor.editing.view.scrollToTheSelection` as it will fail on VirtualTestEditor without DOM.
+			sinon.stub( editor.editing.view, 'scrollToTheSelection' );
+
+			model.schema.register( 'paragraph', { inheritAllFrom: '$block' } );
+			editor.conversion.elementToElement( { model: 'paragraph', view: 'p' } );
+
+			model.schema.register( 'blockObject', { inheritAllFrom: '$blockObject' } );
+			editor.conversion.elementToElement( { model: 'blockObject', view: 'div' } );
+		} );
+
+		afterEach( async () => {
+			await editor.destroy();
+		} );
+
+		it( 'should not fix flat range on text', () => {
+			setModelData( model, '<paragraph>foobar</paragraph>' );
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 6 )
+			) ];
+
+			const eventData = {
+				inputType: 'deleteContentBackward',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 6 )
+			) );
+
+			// Verify delete event.
+			sinon.assert.calledOnce( deleteSpy );
+
+			const deleteData = deleteSpy.args[ 0 ][ 1 ];
+			expect( deleteData.selectionToRemove.getFirstRange().isEqual( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 6 )
+			) ) ).to.be.true;
+		} );
+
+		it( 'should fix range that ends in block object (deleteContentBackward)', () => {
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<blockObject></blockObject>' +
+				'<paragraph>bar</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot.getChild( 1 ), 0 ),
+				view.createPositionAt( viewRoot.getChild( 2 ).getChild( 0 ), 0 )
+			) ];
+
+			const eventData = {
+				inputType: 'deleteContentBackward',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot.getChild( 2 ).getChild( 0 ), 0 )
+			) );
+
+			// Verify delete event.
+			sinon.assert.calledOnce( deleteSpy );
+
+			const deleteData = deleteSpy.args[ 0 ][ 1 ];
+			expect( deleteData.selectionToRemove.getFirstRange().isEqual( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot.getChild( 2 ).getChild( 0 ), 0 )
+			) ) ).to.be.true;
+		} );
+
+		it( 'should fix range that ends in block object (deleteContentForward)', () => {
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<blockObject></blockObject>' +
+				'<paragraph>bar</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 1 ), 0 )
+			) ];
+
+			const eventData = {
+				inputType: 'deleteContentForward',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot, 2 )
+			) );
+
+			// Verify delete event.
+			sinon.assert.calledOnce( deleteSpy );
+		} );
+
+		it( 'should fix range that is collapsed inside an object (insertText)', () => {
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<blockObject></blockObject>' +
+				'<paragraph>bar</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot.getChild( 1 ), 0 ),
+				view.createPositionAt( viewRoot.getChild( 1 ), 0 )
+			) ];
+
+			const eventData = {
+				inputType: 'insertText',
+				data: 'abc',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.data ).to.equal( eventData.data );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 2 )
+			) );
+
+			// Verify insertText event.
+			sinon.assert.calledOnce( insertTextSpy );
+
+			const insertTextData = insertTextSpy.args[ 0 ][ 1 ];
+			expect( insertTextData.selection.getFirstRange().isEqual( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 2 )
+			) ) ).to.be.true;
+		} );
+
+		it( 'should fix range that is collapsed after an object (insertText)', () => {
+			// Note that this is a synthetic scenario and in real life scenarios such event (insert text)
+			// should prefer to jump into the nearest position that accepts text (now it wraps the object).
+
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<blockObject></blockObject>' +
+				'<paragraph>bar</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot, 2 ),
+				view.createPositionAt( viewRoot, 2 )
+			) ];
+
+			const eventData = {
+				inputType: 'insertText',
+				data: 'abc',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.data ).to.equal( eventData.data );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 2 )
+			) );
+
+			// Verify insertText event.
+			sinon.assert.calledOnce( insertTextSpy );
+
+			const insertTextData = insertTextSpy.args[ 0 ][ 1 ];
+			expect( insertTextData.selection.getFirstRange().isEqual( view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 2 )
+			) ) ).to.be.true;
+		} );
+
+		it( 'should fix range that is collapsed before an object (insertText)', () => {
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<blockObject></blockObject>' +
+				'<paragraph>bar</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 1 )
+			) ];
+
+			const eventData = {
+				inputType: 'insertText',
+				data: 'abc',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.data ).to.equal( eventData.data );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 )
+			) );
+
+			// Verify insertText event.
+			sinon.assert.calledOnce( insertTextSpy );
+
+			const insertTextData = insertTextSpy.args[ 0 ][ 1 ];
+			expect( insertTextData.selection.getFirstRange().isEqual( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 ),
+				view.createPositionAt( viewRoot.getChild( 0 ).getChild( 0 ), 3 )
+			) ) ).to.be.true;
+		} );
+
+		it( 'should fix range that is wrapping the block element (enter)', () => {
+			setModelData( model,
+				'<paragraph>foo</paragraph>' +
+				'<paragraph>bar</paragraph>' +
+				'<paragraph>baz</paragraph>'
+			);
+
+			const targetRanges = [ view.createRange(
+				view.createPositionAt( viewRoot, 1 ),
+				view.createPositionAt( viewRoot, 2 )
+			) ];
+
+			const eventData = {
+				inputType: 'insertParagraph',
+				targetRanges
+			};
+
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.targetRanges[ 0 ] ).to.deep.equal( view.createRange(
+				view.createPositionAt( viewRoot.getChild( 1 ).getChild( 0 ), 0 ),
+				view.createPositionAt( viewRoot.getChild( 1 ).getChild( 0 ), 3 )
+			) );
+
+			// Verify enter event.
+			sinon.assert.calledOnce( enterSpy );
+		} );
+
+		it( 'should not crash while trying to fix null range while composing', () => {
+			setModelData( model, '<paragraph>a</paragraph>' );
+
+			const targetRanges = [ null ];
+
+			const eventData = {
+				inputType: 'insertCompositionText',
+				data: 'ab',
+				targetRanges
+			};
+
+			viewDocument.isComposing = true;
+			fireBeforeInputEvent( eventData );
+
+			// Verify beforeinput range.
+			sinon.assert.calledOnce( beforeInputSpy );
+
+			const inputData = beforeInputSpy.args[ 0 ][ 1 ];
+			expect( inputData.inputType ).to.equal( eventData.inputType );
+			expect( inputData.targetRanges[ 0 ] ).to.be.null;
+		} );
+
+		function fireBeforeInputEvent( eventData ) {
+			viewDocument.fire( 'beforeinput', {
+				domEvent: {
+					preventDefault() {}
+				},
+				...eventData
+			} );
+		}
 	} );
 } );

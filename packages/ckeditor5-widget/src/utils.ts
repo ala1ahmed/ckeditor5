@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -8,6 +8,7 @@
  */
 
 import {
+	Rect,
 	CKEditorError,
 	toArray,
 	type ObservableChangeEvent,
@@ -15,7 +16,6 @@ import {
 } from '@ckeditor/ckeditor5-utils';
 
 import {
-	findOptimalInsertionRange as engineFindOptimalInsertionRange,
 	type AddHighlightCallback,
 	type HighlightDescriptor,
 	type RemoveHighlightCallback,
@@ -33,30 +33,23 @@ import {
 
 import { IconView } from '@ckeditor/ckeditor5-ui';
 
-import HighlightStack, { type HighlightStackChangeEvent } from './highlightstack';
-import { getTypeAroundFakeCaretPosition } from './widgettypearound/utils';
+import HighlightStack, { type HighlightStackChangeEvent } from './highlightstack.js';
+import { getTypeAroundFakeCaretPosition } from './widgettypearound/utils.js';
 
 import dragHandleIcon from '../theme/icons/drag-handle.svg';
 
 /**
  * CSS class added to each widget element.
- *
- * @const {String}
  */
 export const WIDGET_CLASS_NAME = 'ck-widget';
 
 /**
  * CSS class added to currently selected widget element.
- *
- * @const {String}
  */
 export const WIDGET_SELECTED_CLASS_NAME = 'ck-widget_selected';
 
 /**
  * Returns `true` if given {@link module:engine/view/node~Node} is an {@link module:engine/view/element~Element} and a widget.
- *
- * @param {module:engine/view/node~Node} node
- * @returns {Boolean}
  */
 export function isWidget( node: ViewTypeCheckable ): boolean {
 	if ( !node.is( 'element' ) ) {
@@ -83,34 +76,34 @@ export function isWidget( node: ViewTypeCheckable ): boolean {
  * For example, in order to convert a `<widget>` model element to `<div class="widget">` in the view, you can define
  * such converters:
  *
- *		editor.conversion.for( 'editingDowncast' )
- *			.elementToElement( {
- *				model: 'widget',
- *				view: ( modelItem, { writer } ) => {
- *					const div = writer.createContainerElement( 'div', { class: 'widget' } );
+ * ```ts
+ * editor.conversion.for( 'editingDowncast' )
+ * 	.elementToElement( {
+ * 		model: 'widget',
+ * 		view: ( modelItem, { writer } ) => {
+ * 			const div = writer.createContainerElement( 'div', { class: 'widget' } );
  *
- *					return toWidget( div, writer, { label: 'some widget' } );
- *				}
- *			} );
+ * 			return toWidget( div, writer, { label: 'some widget' } );
+ * 		}
+ * 	} );
  *
- *		editor.conversion.for( 'dataDowncast' )
- *			.elementToElement( {
- *				model: 'widget',
- *				view: ( modelItem, { writer } ) => {
- *					return writer.createContainerElement( 'div', { class: 'widget' } );
- *				}
- *			} );
+ * editor.conversion.for( 'dataDowncast' )
+ * 	.elementToElement( {
+ * 		model: 'widget',
+ * 		view: ( modelItem, { writer } ) => {
+ * 			return writer.createContainerElement( 'div', { class: 'widget' } );
+ * 		}
+ * 	} );
+ * ```
  *
  * See the full source code of the widget (with a nested editable) schema definition and converters in
  * [this sample](https://github.com/ckeditor/ckeditor5-widget/blob/master/tests/manual/widget-with-nestededitable.js).
  *
- * @param {module:engine/view/element~Element} element
- * @param {module:engine/view/downcastwriter~DowncastWriter} writer
- * @param {Object} [options={}]
- * @param {String|Function} [options.label] Element's label provided to the {@link ~setLabel} function. It can be passed as
+ * @param options Additional options.
+ * @param options.label Element's label provided to the {@link ~setLabel} function. It can be passed as
  * a plain string or a function returning a string. It represents the widget for assistive technologies (like screen readers).
- * @param {Boolean} [options.hasSelectionHandle=false] If `true`, the widget will have a selection handle added.
- * @returns {module:engine/view/element~Element} Returns the same element.
+ * @param options.hasSelectionHandle If `true`, the widget will have a selection handle added.
+ * @returns Returns the same element.
  */
 export function toWidget(
 	element: ViewElement,
@@ -126,7 +119,7 @@ export function toWidget(
 		 * instance.
 		 *
 		 * @error widget-to-widget-wrong-element-type
-		 * @param {String} element The view element passed to `toWidget()`.
+		 * @param element The view element passed to `toWidget()`.
 		 */
 		throw new CKEditorError(
 			'widget-to-widget-wrong-element-type',
@@ -156,12 +149,10 @@ export function toWidget(
 	return element;
 }
 
-// Default handler for adding a highlight on a widget.
-// It adds CSS class and attributes basing on the given highlight descriptor.
-//
-// @param {module:engine/view/element~Element} element
-// @param {module:engine/conversion/downcasthelpers~HighlightDescriptor} descriptor
-// @param {module:engine/view/downcastwriter~DowncastWriter} writer
+/**
+ * Default handler for adding a highlight on a widget.
+ * It adds CSS class and attributes basing on the given highlight descriptor.
+ */
 function addHighlight( element: ViewElement, descriptor: HighlightDescriptor, writer: DowncastWriter ) {
 	if ( descriptor.classes ) {
 		writer.addClass( toArray( descriptor.classes ), element );
@@ -174,12 +165,10 @@ function addHighlight( element: ViewElement, descriptor: HighlightDescriptor, wr
 	}
 }
 
-// Default handler for removing a highlight from a widget.
-// It removes CSS class and attributes basing on the given highlight descriptor.
-//
-// @param {module:engine/view/element~Element} element
-// @param {module:engine/conversion/downcasthelpers~HighlightDescriptor} descriptor
-// @param {module:engine/view/downcastwriter~DowncastWriter} writer
+/**
+ * Default handler for removing a highlight from a widget.
+ * It removes CSS class and attributes basing on the given highlight descriptor.
+ */
 function removeHighlight( element: ViewElement, descriptor: HighlightDescriptor, writer: DowncastWriter ) {
 	if ( descriptor.classes ) {
 		writer.removeClass( toArray( descriptor.classes ), element );
@@ -195,11 +184,6 @@ function removeHighlight( element: ViewElement, descriptor: HighlightDescriptor,
 /**
  * Sets highlight handling methods. Uses {@link module:widget/highlightstack~HighlightStack} to
  * properly determine which highlight descriptor should be used at given time.
- *
- * @param {module:engine/view/element~Element} element
- * @param {module:engine/view/downcastwriter~DowncastWriter} writer
- * @param {Function} [add]
- * @param {Function} [remove]
  */
 export function setHighlightHandling(
 	element: ViewElement,
@@ -230,9 +214,6 @@ export function setHighlightHandling(
  * Sets label for given element.
  * It can be passed as a plain string or a function returning a string. Function will be called each time label is retrieved by
  * {@link ~getLabel `getLabel()`}.
- *
- * @param {module:engine/view/element~Element} element
- * @param {string|Function} labelOrCreator
  */
 export function setLabel( element: ViewElement, labelOrCreator: string | ( () => string ) ): void {
 	const widgetLabel = element.getCustomProperty( 'widgetLabel' ) as Array<string | ( () => string )>;
@@ -242,9 +223,6 @@ export function setLabel( element: ViewElement, labelOrCreator: string | ( () =>
 
 /**
  * Returns the label of the provided element.
- *
- * @param {module:engine/view/element~Element} element
- * @returns {String}
  */
 export function getLabel( element: ViewElement ): string {
 	const widgetLabel = element.getCustomProperty( 'widgetLabel' ) as Array<string | ( () => string )>;
@@ -273,32 +251,32 @@ export function getLabel( element: ViewElement ): string {
  * For example, in order to convert a `<nested>` model element to `<div class="nested">` in the view, you can define
  * such converters:
  *
- *		editor.conversion.for( 'editingDowncast' )
- *			.elementToElement( {
- *				model: 'nested',
- *				view: ( modelItem, { writer } ) => {
- *					const div = writer.createEditableElement( 'div', { class: 'nested' } );
+ * ```ts
+ * editor.conversion.for( 'editingDowncast' )
+ * 	.elementToElement( {
+ * 		model: 'nested',
+ * 		view: ( modelItem, { writer } ) => {
+ * 			const div = writer.createEditableElement( 'div', { class: 'nested' } );
  *
- *					return toWidgetEditable( nested, writer, { label: 'label for editable' } );
- *				}
- *			} );
+ * 			return toWidgetEditable( nested, writer, { label: 'label for editable' } );
+ * 		}
+ * 	} );
  *
- *		editor.conversion.for( 'dataDowncast' )
- *			.elementToElement( {
- *				model: 'nested',
- *				view: ( modelItem, { writer } ) => {
- *					return writer.createContainerElement( 'div', { class: 'nested' } );
- *				}
- *			} );
+ * editor.conversion.for( 'dataDowncast' )
+ * 	.elementToElement( {
+ * 		model: 'nested',
+ * 		view: ( modelItem, { writer } ) => {
+ * 			return writer.createContainerElement( 'div', { class: 'nested' } );
+ * 		}
+ * 	} );
+ * ```
  *
  * See the full source code of the widget (with nested editable) schema definition and converters in
  * [this sample](https://github.com/ckeditor/ckeditor5-widget/blob/master/tests/manual/widget-with-nestededitable.js).
  *
- * @param {module:engine/view/editableelement~EditableElement} editable
- * @param {module:engine/view/downcastwriter~DowncastWriter} writer
- * @param {Object} [options] Additional options.
- * @param {String} [options.label] Editable's label used by assistive technologies (e.g. screen readers).
- * @returns {module:engine/view/editableelement~EditableElement} Returns the same element that was provided in the `editable` parameter
+ * @param options Additional options.
+ * @param options.label Editable's label used by assistive technologies (e.g. screen readers).
+ * @returns Returns the same element that was provided in the `editable` parameter
  */
 export function toWidgetEditable(
 	editable: ViewEditableElement,
@@ -310,6 +288,7 @@ export function toWidgetEditable(
 	writer.addClass( [ 'ck-editor__editable', 'ck-editor__nested-editable' ], editable );
 
 	writer.setAttribute( 'role', 'textbox', editable );
+	writer.setAttribute( 'tabindex', '-1', editable );
 
 	if ( options.label ) {
 		writer.setAttribute( 'aria-label', options.label, editable );
@@ -347,10 +326,9 @@ export function toWidgetEditable(
  * is then passed to {@link module:engine/model/model~Model#insertContent}, the block will be fully replaced
  * by the inserted widget block.
  *
- * @param {module:engine/model/selection~Selection|module:engine/model/documentselection~DocumentSelection} selection
- * The selection based on which the insertion position should be calculated.
- * @param {module:engine/model/model~Model} model Model instance.
- * @returns {module:engine/model/range~Range} The optimal range.
+ * @param selection The selection based on which the insertion position should be calculated.
+ * @param model Model instance.
+ * @returns The optimal range.
  */
 export function findOptimalInsertionRange(
 	selection: Selection | DocumentSelection,
@@ -368,7 +346,7 @@ export function findOptimalInsertionRange(
 		}
 	}
 
-	return engineFindOptimalInsertionRange( selection, model );
+	return model.schema.findOptimalInsertionRange( selection );
 }
 
 /**
@@ -377,42 +355,49 @@ export function findOptimalInsertionRange(
  *
  * For example:
  *
- *		// Model:
- *		<placeholder type="name"></placeholder>
+ * ```
+ * // Model:
+ * <placeholder type="name"></placeholder>
  *
- *		// View:
- *		<span class="placeholder">name</span>
+ * // View:
+ * <span class="placeholder">name</span>
+ * ```
  *
- * In such case, view positions inside `<span>` cannot be correct mapped to the model (because the model element is empty).
+ * In such case, view positions inside `<span>` cannot be correctly mapped to the model (because the model element is empty).
  * To handle mapping positions inside `<span class="placeholder">` to the model use this util as follows:
  *
- *		editor.editing.mapper.on(
- *			'viewToModelPosition',
- *			viewToModelPositionOutsideModelElement( model, viewElement => viewElement.hasClass( 'placeholder' ) )
- *		);
+ * ```ts
+ * editor.editing.mapper.on(
+ * 	'viewToModelPosition',
+ * 	viewToModelPositionOutsideModelElement( model, viewElement => viewElement.hasClass( 'placeholder' ) )
+ * );
+ * ```
  *
  * The callback will try to map the view offset of selection to an expected model position.
  *
  * 1. When the position is at the end (or in the middle) of the inline widget:
  *
- *		// View:
- *		<p>foo <span class="placeholder">name|</span> bar</p>
+ * ```
+ * // View:
+ * <p>foo <span class="placeholder">name|</span> bar</p>
  *
- *		// Model:
- *		<paragraph>foo <placeholder type="name"></placeholder>| bar</paragraph>
+ * // Model:
+ * <paragraph>foo <placeholder type="name"></placeholder>| bar</paragraph>
+ * ```
  *
  * 2. When the position is at the beginning of the inline widget:
  *
- *		// View:
- *		<p>foo <span class="placeholder">|name</span> bar</p>
+ * ```
+ * // View:
+ * <p>foo <span class="placeholder">|name</span> bar</p>
  *
- *		// Model:
- *		<paragraph>foo |<placeholder type="name"></placeholder> bar</paragraph>
+ * // Model:
+ * <paragraph>foo |<placeholder type="name"></placeholder> bar</paragraph>
+ * ```
  *
- * @param {module:engine/model/model~Model} model Model instance on which the callback operates.
- * @param {Function} viewElementMatcher Function that is passed a view element and should return `true` if the custom mapping
+ * @param model Model instance on which the callback operates.
+ * @param viewElementMatcher Function that is passed a view element and should return `true` if the custom mapping
  * should be applied to the given view element.
- * @return {Function}
  */
 export function viewToModelPositionOutsideModelElement(
 	model: Model,
@@ -433,17 +418,16 @@ export function viewToModelPositionOutsideModelElement(
 	};
 }
 
-// Default filler offset function applied to all widget elements.
-//
-// @returns {null}
+/**
+ * Default filler offset function applied to all widget elements.
+ */
 function getFillerOffset() {
 	return null;
 }
 
-// Adds a drag handle to the widget.
-//
-// @param {module:engine/view/containerelement~ContainerElement}
-// @param {module:engine/view/downcastwriter~DowncastWriter} writer
+/**
+ * Adds a drag handle to the widget.
+ */
 function addSelectionHandle( widgetElement: ViewContainerElement, writer: DowncastWriter ) {
 	const selectionHandle = writer.createUIElement( 'div', { class: 'ck ck-widget__selection-handle' }, function( domDocument ) {
 		const domElement = this.toDomElement( domDocument );
@@ -463,4 +447,69 @@ function addSelectionHandle( widgetElement: ViewContainerElement, writer: Downca
 	// Append the selection handle into the widget wrapper.
 	writer.insert( writer.createPositionAt( widgetElement, 0 ), selectionHandle );
 	writer.addClass( [ 'ck-widget_with-selection-handle' ], widgetElement );
+}
+
+/**
+ * Starting from a DOM resize host element (an element that receives dimensions as a result of resizing),
+ * this helper returns the width of the found ancestor element.
+ *
+ *	* It searches up to 5 levels of ancestors only.
+ *
+ * @param domResizeHost Resize host DOM element that receives dimensions as a result of resizing.
+ * @returns Width of ancestor element in pixels or 0 if no ancestor with a computed width has been found.
+ */
+export function calculateResizeHostAncestorWidth( domResizeHost: HTMLElement ): number {
+	const getElementComputedWidth = ( element: HTMLElement ) => {
+		const { width, paddingLeft, paddingRight } = element.ownerDocument.defaultView!.getComputedStyle( element! );
+
+		return parseFloat( width ) - ( parseFloat( paddingLeft ) || 0 ) - ( parseFloat( paddingRight ) || 0 );
+	};
+
+	const domResizeHostParent = domResizeHost.parentElement;
+
+	if ( !domResizeHostParent ) {
+		return 0;
+	}
+
+	// Need to use computed style as it properly excludes parent's paddings from the returned value.
+	let parentWidth = getElementComputedWidth( domResizeHostParent! );
+
+	// Sometimes parent width cannot be accessed. If that happens we should go up in the elements tree
+	// and try to get width from next ancestor.
+	// https://github.com/ckeditor/ckeditor5/issues/10776
+	const ancestorLevelLimit = 5;
+	let currentLevel = 0;
+
+	let checkedElement = domResizeHostParent!;
+
+	while ( isNaN( parentWidth ) ) {
+		checkedElement = checkedElement.parentElement!;
+
+		if ( ++currentLevel > ancestorLevelLimit ) {
+			return 0;
+		}
+
+		parentWidth = getElementComputedWidth( checkedElement );
+	}
+
+	return parentWidth;
+}
+
+/**
+ * Calculates a relative width of a `domResizeHost` compared to its ancestor in percents.
+ *
+ * @param domResizeHost Resize host DOM element.
+ * @returns Percentage value between 0 and 100.
+ */
+export function calculateResizeHostPercentageWidth(
+	domResizeHost: HTMLElement,
+	resizeHostRect: Rect = new Rect( domResizeHost )
+): number {
+	const parentWidth = calculateResizeHostAncestorWidth( domResizeHost );
+
+	if ( !parentWidth ) {
+		return 0;
+	}
+
+	return resizeHostRect.width / parentWidth * 100;
 }

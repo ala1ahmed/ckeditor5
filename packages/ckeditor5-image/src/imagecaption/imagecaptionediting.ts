@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,14 +7,14 @@
  * @module image/imagecaption/imagecaptionediting
  */
 
-import { type Editor, Plugin, type PluginDependencies, type CommandExecuteEvent } from 'ckeditor5/src/core';
-import { Element, enablePlaceholder, type DocumentChangeEvent, type DiffItemAttribute } from 'ckeditor5/src/engine';
-import { toWidgetEditable } from 'ckeditor5/src/widget';
-import type { GetCallback } from 'ckeditor5/src/utils';
+import { type Editor, Plugin, type CommandExecuteEvent } from 'ckeditor5/src/core.js';
+import { Element, enablePlaceholder, type DocumentChangeEvent, type DiffItemAttribute } from 'ckeditor5/src/engine.js';
+import { toWidgetEditable } from 'ckeditor5/src/widget.js';
+import type { GetCallback } from 'ckeditor5/src/utils.js';
 
-import ToggleImageCaptionCommand from './toggleimagecaptioncommand';
-import ImageUtils from '../imageutils';
-import ImageCaptionUtils from './imagecaptionutils';
+import ToggleImageCaptionCommand from './toggleimagecaptioncommand.js';
+import ImageUtils from '../imageutils.js';
+import ImageCaptionUtils from './imagecaptionutils.js';
 
 /**
  * The image caption engine plugin. It is responsible for:
@@ -27,15 +27,22 @@ export default class ImageCaptionEditing extends Plugin {
 	/**
 	 * @inheritDoc
 	 */
-	public static get requires(): PluginDependencies {
-		return [ ImageUtils, ImageCaptionUtils ];
+	public static get requires() {
+		return [ ImageUtils, ImageCaptionUtils ] as const;
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public static get pluginName(): 'ImageCaptionEditing' {
-		return 'ImageCaptionEditing';
+	public static get pluginName() {
+		return 'ImageCaptionEditing' as const;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public static override get isOfficialPlugin(): true {
+		return true;
 	}
 
 	/**
@@ -89,8 +96,8 @@ export default class ImageCaptionEditing extends Plugin {
 	private _setupConversion(): void {
 		const editor = this.editor;
 		const view = editor.editing.view;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
-		const imageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageCaptionUtils: ImageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
 		const t = editor.t;
 
 		// View -> model converter for the data pipeline.
@@ -122,10 +129,10 @@ export default class ImageCaptionEditing extends Plugin {
 				const figcaptionElement = writer.createEditableElement( 'figcaption' );
 				writer.setCustomProperty( 'imageCaption', true, figcaptionElement );
 
+				figcaptionElement.placeholder = t( 'Enter image caption' );
 				enablePlaceholder( {
 					view,
 					element: figcaptionElement,
-					text: t( 'Enter image caption' ),
 					keepOnFocus: true
 				} );
 
@@ -144,8 +151,8 @@ export default class ImageCaptionEditing extends Plugin {
 	 */
 	private _setupImageTypeCommandsIntegration(): void {
 		const editor = this.editor;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
-		const imageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageCaptionUtils: ImageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
 		const imageTypeInlineCommand = editor.commands.get( 'imageTypeInline' );
 		const imageTypeBlockCommand = editor.commands.get( 'imageTypeBlock' );
 
@@ -157,7 +164,7 @@ export default class ImageCaptionEditing extends Plugin {
 
 			const { oldElement, newElement } = evt.return as { oldElement: Element; newElement: Element };
 
-			/* istanbul ignore if: paranoid check */
+			/* istanbul ignore if: paranoid check -- @preserve */
 			if ( !oldElement ) {
 				return;
 			}
@@ -246,8 +253,8 @@ export default class ImageCaptionEditing extends Plugin {
 	private _registerCaptionReconversion(): void {
 		const editor = this.editor;
 		const model = editor.model;
-		const imageUtils = editor.plugins.get( 'ImageUtils' );
-		const imageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
+		const imageUtils: ImageUtils = editor.plugins.get( 'ImageUtils' );
+		const imageCaptionUtils: ImageCaptionUtils = editor.plugins.get( 'ImageCaptionUtils' );
 
 		model.document.on<DocumentChangeEvent>( 'change:data', () => {
 			const changes = model.document.differ.getChanges();
@@ -270,15 +277,5 @@ export default class ImageCaptionEditing extends Plugin {
 				}
 			}
 		} );
-	}
-}
-
-declare module '@ckeditor/ckeditor5-core' {
-	interface PluginsMap {
-		[ ImageCaptionEditing.pluginName ]: ImageCaptionEditing;
-	}
-
-	interface CommandsMap {
-		toggleImageCaption: ToggleImageCaptionCommand;
 	}
 }

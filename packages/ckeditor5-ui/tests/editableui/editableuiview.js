@@ -1,16 +1,16 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
 /* globals document */
 
-import EditingView from '@ckeditor/ckeditor5-engine/src/view/view';
-import ViewRootEditableElement from '@ckeditor/ckeditor5-engine/src/view/rooteditableelement';
-import EditableUIView from '../../src/editableui/editableuiview';
-import View from '../../src/view';
-import Locale from '@ckeditor/ckeditor5-utils/src/locale';
-import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils';
+import EditingView from '@ckeditor/ckeditor5-engine/src/view/view.js';
+import ViewRootEditableElement from '@ckeditor/ckeditor5-engine/src/view/rooteditableelement.js';
+import EditableUIView from '../../src/editableui/editableuiview.js';
+import View from '../../src/view.js';
+import Locale from '@ckeditor/ckeditor5-utils/src/locale.js';
+import testUtils from '@ckeditor/ckeditor5-core/tests/_utils/utils.js';
 
 describe( 'EditableUIView', () => {
 	let view, editableElement, editingView, editingViewRoot, locale;
@@ -43,6 +43,8 @@ describe( 'EditableUIView', () => {
 			expect( view.name ).to.be.null;
 			expect( view._externalElement ).to.be.undefined;
 			expect( view._editingView ).to.equal( editingView );
+			expect( view._hasExternalElement ).to.be.false;
+			expect( view.hasExternalElement ).to.be.false;
 
 			view.destroy();
 		} );
@@ -56,6 +58,8 @@ describe( 'EditableUIView', () => {
 			expect( view.element.getAttribute( 'lang' ) ).to.equal( 'en' );
 			expect( view.element.getAttribute( 'dir' ) ).to.equal( 'ltr' );
 			expect( view._externalElement ).to.be.undefined;
+			expect( view._hasExternalElement ).to.be.false;
+			expect( view.hasExternalElement ).to.be.false;
 			expect( view.isRendered ).to.be.true;
 		} );
 
@@ -73,6 +77,7 @@ describe( 'EditableUIView', () => {
 			expect( view.element.getAttribute( 'lang' ) ).to.equal( 'en' );
 			expect( view.element.getAttribute( 'dir' ) ).to.equal( 'ltr' );
 			expect( view._hasExternalElement ).to.be.true;
+			expect( view.hasExternalElement ).to.be.true;
 			expect( view.isRendered ).to.be.true;
 
 			view.destroy();

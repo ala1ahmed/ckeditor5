@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2023, CKSource Holding sp. z o.o. All rights reserved.
+ * @license Copyright (c) 2003-2024, CKSource Holding sp. z o.o. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -9,16 +9,19 @@
 
 /* global setInterval, clearInterval */
 
-import Observer from './observer';
-import MutationObserver from './mutationobserver';
+import Observer from './observer.js';
+import MutationObserver from './mutationobserver.js';
+import FocusObserver from './focusobserver.js';
 import { env } from '@ckeditor/ckeditor5-utils';
 import { debounce, type DebouncedFunc } from 'lodash-es';
 
-import type View from '../view';
-import type DocumentSelection from '../documentselection';
-import type DomConverter from '../domconverter';
-import type Selection from '../selection';
-import FocusObserver from './focusobserver';
+import type View from '../view.js';
+import type DocumentSelection from '../documentselection.js';
+import type DomConverter from '../domconverter.js';
+import type Selection from '../selection.js';
+import type { ViewDocumentCompositionStartEvent } from './compositionobserver.js';
+
+// @if CK_DEBUG_TYPING // const { _debouncedLine } = require( '../../dev-utils/utils.js' );
 
 type DomSelection = globalThis.Selection;
 
@@ -90,8 +93,8 @@ export default class SelectionObserver extends Observer {
 	constructor( view: View ) {
 		super( view );
 
-		this.mutationObserver = view.getObserver( MutationObserver )!;
-		this.focusObserver = view.getObserver( FocusObserver )!;
+		this.mutationObserver = view.getObserver( MutationObserver );
+		this.focusObserver = view.getObserver( FocusObserver );
 		this.selection = this.document.selection;
 		this.domConverter = view.domConverter;
 
@@ -128,7 +131,7 @@ export default class SelectionObserver extends Observer {
 
 			// Make sure that model selection is up-to-date at the end of selecting process.
 			// Sometimes `selectionchange` events could arrive after the `mouseup` event and that selection could be already outdated.
-			this._handleSelectionChange( null, domDocument );
+			this._handleSelectionChange( domDocument );
 
 			this.document.isSelecting = false;
 
@@ -153,23 +156,24 @@ export default class SelectionObserver extends Observer {
 		// handler would like to check it and update (for example table multi cell selection).
 		this.listenTo( domDocument, 'mouseup', endDocumentIsSelecting, { priority: 'highest', useCapture: true } );
 
-		this.listenTo( domDocument, 'selectionchange', ( evt, domEvent ) => {
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
-			// @if CK_DEBUG_TYPING // 	const domSelection = domDocument.defaultView.getSelection();
-			// @if CK_DEBUG_TYPING // 	console.group( '%c[SelectionObserver]%c selectionchange', 'color:green', ''
+		this.listenTo( domDocument, 'selectionchange', () => {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+			// @if CK_DEBUG_TYPING // 	_debouncedLine();
+			// @if CK_DEBUG_TYPING // 	const domSelection = domDocument.defaultView!.getSelection();
+			// @if CK_DEBUG_TYPING // 	console.group( '%c[SelectionObserver]%c selectionchange', 'color: green', ''
 			// @if CK_DEBUG_TYPING // 	);
-			// @if CK_DEBUG_TYPING // 	console.info( '%c[SelectionObserver]%c DOM Selection:', 'font-weight:bold;color:green', '',
-			// @if CK_DEBUG_TYPING // 		{ node: domSelection.anchorNode, offset: domSelection.anchorOffset },
-			// @if CK_DEBUG_TYPING // 		{ node: domSelection.focusNode, offset: domSelection.focusOffset }
+			// @if CK_DEBUG_TYPING // 	console.info( '%c[SelectionObserver]%c DOM Selection:', 'font-weight: bold; color: green', '',
+			// @if CK_DEBUG_TYPING // 		{ node: domSelection!.anchorNode, offset: domSelection!.anchorOffset },
+			// @if CK_DEBUG_TYPING // 		{ node: domSelection!.focusNode, offset: domSelection!.focusOffset }
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
 
 			// The Renderer is disabled while composing on non-android browsers, so we can't update the view selection
 			// because the DOM and view tree drifted apart. Position mapping could fail because of it.
 			if ( this.document.isComposing && !env.isAndroid ) {
-				// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+				// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 				// @if CK_DEBUG_TYPING // 	console.info( '%c[SelectionObserver]%c Selection change ignored (isComposing)',
-				// @if CK_DEBUG_TYPING // 		'font-weight:bold;color:green', ''
+				// @if CK_DEBUG_TYPING // 		'font-weight: bold; color: green', ''
 				// @if CK_DEBUG_TYPING // 	);
 				// @if CK_DEBUG_TYPING // 	console.groupEnd();
 				// @if CK_DEBUG_TYPING // }
@@ -177,9 +181,9 @@ export default class SelectionObserver extends Observer {
 				return;
 			}
 
-			this._handleSelectionChange( domEvent, domDocument );
+			this._handleSelectionChange( domDocument );
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.groupEnd();
 			// @if CK_DEBUG_TYPING // }
 
@@ -188,7 +192,35 @@ export default class SelectionObserver extends Observer {
 			this._documentIsSelectingInactivityTimeoutDebounced();
 		} );
 
+		// Update the model DocumentSelection just after the Renderer and the SelectionObserver are locked.
+		// We do this synchronously (without waiting for the `selectionchange` DOM event) as browser updates
+		// the DOM selection (but not visually) to span the text that is under composition and could be replaced.
+		this.listenTo<ViewDocumentCompositionStartEvent>( this.view.document, 'compositionstart', () => {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+			// @if CK_DEBUG_TYPING // 	const domSelection = domDocument.defaultView!.getSelection();
+			// @if CK_DEBUG_TYPING // 	console.group( '%c[SelectionObserver]%c update selection on compositionstart', 'color: green', ''
+			// @if CK_DEBUG_TYPING // 	);
+			// @if CK_DEBUG_TYPING // 	console.info( '%c[SelectionObserver]%c DOM Selection:', 'font-weight: bold; color: green', '',
+			// @if CK_DEBUG_TYPING // 		{ node: domSelection!.anchorNode, offset: domSelection!.anchorOffset },
+			// @if CK_DEBUG_TYPING // 		{ node: domSelection!.focusNode, offset: domSelection!.focusOffset }
+			// @if CK_DEBUG_TYPING // 	);
+			// @if CK_DEBUG_TYPING // }
+
+			this._handleSelectionChange( domDocument );
+
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+			// @if CK_DEBUG_TYPING // 	console.groupEnd();
+			// @if CK_DEBUG_TYPING // }
+		}, { priority: 'lowest' } );
+
 		this._documents.add( domDocument );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public override stopObserving( domElement: HTMLElement ): void {
+		this.stopListening( domElement );
 	}
 
 	/**
@@ -202,22 +234,22 @@ export default class SelectionObserver extends Observer {
 		this._documentIsSelectingInactivityTimeoutDebounced.cancel();
 	}
 
-	// @if CK_DEBUG //	_reportInfiniteLoop() {
+	/* istanbul ignore next -- @preserve */
+	private _reportInfiniteLoop() {
 	// @if CK_DEBUG //		throw new Error(
 	// @if CK_DEBUG //			'Selection change observer detected an infinite rendering loop.\n\n' +
 	// @if CK_DEBUG //	 		'⚠️⚠️ Report this error on https://github.com/ckeditor/ckeditor5/issues/11658.'
 	// @if CK_DEBUG //		);
-	// @if CK_DEBUG //	}
+	}
 
 	/**
 	 * Selection change listener. {@link module:engine/view/observer/mutationobserver~MutationObserver#flush Flush} mutations, check if
 	 * a selection changes and fires {@link module:engine/view/document~Document#event:selectionChange} event on every change
 	 * and {@link module:engine/view/document~Document#event:selectionChangeDone} when a selection stop changing.
 	 *
-	 * @param domEvent DOM event.
 	 * @param domDocument DOM document.
 	 */
-	private _handleSelectionChange( domEvent: unknown, domDocument: Document ) {
+	private _handleSelectionChange( domDocument: Document ) {
 		if ( !this.isEnabled ) {
 			return;
 		}
@@ -245,6 +277,9 @@ export default class SelectionObserver extends Observer {
 
 		this.view.hasDomSelection = true;
 
+		// Mark the latest focus change as complete (we got new selection after the focus so the selection is in the focused element).
+		this.focusObserver.flush();
+
 		if ( this.selection.isEqual( newViewSelection ) && this.domConverter.isDomSelectionCorrect( domSelection ) ) {
 			return;
 		}
@@ -257,14 +292,10 @@ export default class SelectionObserver extends Observer {
 			// Most probably you try to put the selection in the position which is not allowed
 			// by the browser and browser fixes it automatically what causes `selectionchange` event on
 			// which a loopback through a model tries to re-render the wrong selection and again.
-			//
-			// @if CK_DEBUG // this._reportInfiniteLoop();
+			this._reportInfiniteLoop();
 
 			return;
 		}
-
-		// Mark the latest focus change as complete (we got new selection after the focus so the selection is in the focused element).
-		this.focusObserver.flush();
 
 		if ( this.selection.isSimilar( newViewSelection ) ) {
 			// If selection was equal and we are at this point of algorithm, it means that it was incorrect.
@@ -277,9 +308,9 @@ export default class SelectionObserver extends Observer {
 				domSelection
 			};
 
-			// @if CK_DEBUG_TYPING // if ( window.logCKETyping ) {
+			// @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
 			// @if CK_DEBUG_TYPING // 	console.info( '%c[SelectionObserver]%c Fire selection change:',
-			// @if CK_DEBUG_TYPING // 		'font-weight:bold;color:green', '',
+			// @if CK_DEBUG_TYPING // 		'font-weight: bold; color: green', '',
 			// @if CK_DEBUG_TYPING // 		newViewSelection.getFirstRange()
 			// @if CK_DEBUG_TYPING // 	);
 			// @if CK_DEBUG_TYPING // }
@@ -334,7 +365,7 @@ export type ViewDocumentSelectionEventData = {
  * {@link module:engine/view/view~View} this event is available by default.
  *
  * @see module:engine/view/observer/selectionobserver~SelectionObserver
- * @eventName selectionChange
+ * @eventName module:engine/view/document~Document#selectionChange
  */
 export type ViewDocumentSelectionChangeEvent = {
 	name: 'selectionChange';
@@ -350,7 +381,7 @@ export type ViewDocumentSelectionChangeEvent = {
  * {@link module:engine/view/view~View} this event is available by default.
  *
  * @see module:engine/view/observer/selectionobserver~SelectionObserver
- * @eventName selectionChangeDone
+ * @eventName module:engine/view/document~Document#selectionChangeDone
  */
 export type ViewDocumentSelectionChangeDoneEvent = {
 	name: 'selectionChangeDone';
